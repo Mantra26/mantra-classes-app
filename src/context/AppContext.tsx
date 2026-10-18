@@ -624,6 +624,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCustomPresets(updated);
   };
 
+  // Helper to shuffle questions for tests so questions do not repeat predictably
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
   // Helper to construct questions for tests
   const initTestSession = (
     title: string,
@@ -682,12 +692,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const startSubjectTest = (subId: SubjectId) => {
     const sub = ICSE_SUBJECTS.find(s => s.id === subId);
-    const questions = ICSE_QUESTION_BANK.filter(q => q.subjectId === subId);
+    let questions = ICSE_QUESTION_BANK.filter(q => {
+      if (q.subjectId !== subId) return false;
+      if (q.gradeLevel && q.gradeLevel !== activeGrade) return false;
+      return true;
+    });
+
+    // If no grade-specific questions matched and current grade is 7 (default), fallback to all questions for subject
+    if (questions.length === 0) {
+      questions = ICSE_QUESTION_BANK.filter(q => q.subjectId === subId);
+    }
+
+    // Shuffle questions so test attempts provide fresh variety and don't repeat often
+    const shuffled = shuffleArray(questions);
+    const selectedQuestions = shuffled.slice(0, Math.min(shuffled.length, 15));
     const subChapters = chapters.filter(c => c.subjectId === subId).map(c => c.id);
     initTestSession(
-      `${sub?.name || 'Subject'} Full ICSE Mock Examination`,
+      `${sub?.name || 'Subject'} Full ${activeBoard} Mock Examination`,
       'subject-wise',
-      questions,
+      selectedQuestions,
       30,
       subId,
       subChapters
@@ -697,11 +720,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startChapterTest = (chapterId: string) => {
     const ch = chapters.find(c => c.id === chapterId);
     const sub = ICSE_SUBJECTS.find(s => s.id === ch?.subjectId);
-    const questions = ICSE_QUESTION_BANK.filter(q => q.chapterId === chapterId);
+    let questions = ICSE_QUESTION_BANK.filter(q => q.chapterId === chapterId);
+
+    // Shuffle chapter questions so repeated practice tests offer varied question sequence
+    const shuffled = shuffleArray(questions);
+    // Draw up to 8 questions per diagnostic chapter test (or all if 8 or fewer)
+    const selectedQuestions = shuffled.slice(0, Math.min(shuffled.length, 8));
     initTestSession(
       `${ch?.title || 'Chapter'} Lesson Diagnostic Test`,
       'lesson-wise',
-      questions,
+      selectedQuestions,
       15,
       ch?.subjectId,
       [chapterId]
@@ -715,6 +743,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const matchType = config.questionTypes.length === 0 || config.questionTypes.includes(q.type);
       return matchSub && matchChap && matchType;
     });
+
+    // Shuffle question pool before slicing to guarantee non-repetitive custom tests
+    pool = shuffleArray(pool);
 
     if (config.difficultyRatio === 'mostly_average') {
       pool = [...pool.filter(q => q.difficulty === 'Average'), ...pool.filter(q => q.difficulty === 'Tough')];

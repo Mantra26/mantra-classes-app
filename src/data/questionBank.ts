@@ -1,5 +1,7 @@
 import { Question } from '../types';
 import { CBSE_COMMERCE_QUESTION_BANK } from './cbseCommerceQuestions';
+import { EXTRA_QUESTIONS } from './extraQuestions';
+import { JUNIOR_QUESTIONS } from './juniorQuestions';
 
 export const ICSE_QUESTION_BANK: Question[] = [
   // ================= MATHEMATICS =================
@@ -724,6 +726,8 @@ export const ICSE_QUESTION_BANK: Question[] = [
     mantraHint: 'Three letters: Central Processing Unit.',
     explanation: 'The CPU (Central Processing Unit) is the brain of the computer that controls all operations and processes instructions.'
   },
-  ...CBSE_COMMERCE_QUESTION_BANK
+  ...CBSE_COMMERCE_QUESTION_BANK,
+  ...EXTRA_QUESTIONS,
+  ...JUNIOR_QUESTIONS
 ];
 
