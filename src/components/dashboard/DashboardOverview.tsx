@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { ICSE_SUBJECTS, ICSE_CHAPTERS } from '../../data/icseCurriculum';
+import { ALL_ACHIEVEMENT_BADGES, getScholarLevel } from '../../data/gamificationData';
 import { WeakAreasWidget } from './WeakAreasWidget';
 import {
   Trophy,
@@ -18,7 +19,10 @@ import {
   Award,
   Lock,
   AlertTriangle,
-  MessageSquare
+  MessageSquare,
+  Zap,
+  Flame,
+  Search
 } from 'lucide-react';
 
 export const DashboardOverview: React.FC = () => {
@@ -36,8 +40,13 @@ export const DashboardOverview: React.FC = () => {
     activeBoard,
     filteredSubjects,
     openPaymentModal,
-    currentRole
+    currentRole,
+    setIsFlashcardsOpen,
+    setIsBlitzOpen,
+    setIsSearchOpen
   } = useApp();
+
+  const scholarLevel = getScholarLevel(user.xp || 680);
 
   const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
   const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
@@ -257,23 +266,131 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-            <Award className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600">
+            <Flame className="w-6 h-6 text-orange-500 fill-orange-500" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900">4 Days</div>
-            <div className="text-xs font-semibold text-slate-500">Study Streak 🔥</div>
+            <div className="text-2xl font-black text-slate-900">{user.streakDays || 3} Days</div>
+            <div className="text-xs font-semibold text-slate-500">Daily Study Streak 🔥</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-            <Trophy className="w-6 h-6" />
+        <div
+          onClick={() => setView('leaderboard')}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+            <Zap className="w-6 h-6 text-amber-500 fill-amber-400" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900">{user.coins}</div>
-            <div className="text-xs font-semibold text-slate-500">Mantra Coins 🪙</div>
+            <div className="text-2xl font-black text-slate-900">{user.xp || 680} XP</div>
+            <div className="text-xs font-bold text-indigo-600 flex items-center space-x-1">
+              <span>{scholarLevel.badge} {scholarLevel.level}</span>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* EdTech Study Hub: Flashcards, 60s Blitz, Hall of Fame & Concept Solver */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 60s Daily Blitz Card */}
+        <div className="rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 text-slate-950 p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-slate-950/20 px-2 py-0.5 rounded-full text-slate-950">
+                Daily Rapid Quiz
+              </span>
+              <span className="text-xs font-mono font-bold bg-white/20 px-2 py-0.5 rounded-lg text-slate-950">
+                ⚡ +50 XP
+              </span>
+            </div>
+            <h3 className="text-lg font-black tracking-tight text-slate-950 mb-1">
+              60-Second Daily Blitz
+            </h3>
+            <p className="text-xs text-slate-900/80 font-medium leading-relaxed">
+              5 fast conceptual MCQs with ticking timer. Build streaks and boost your weekly rank!
+            </p>
+          </div>
+          <button
+            onClick={() => setIsBlitzOpen(true)}
+            className="mt-4 w-full py-2.5 px-4 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-xs shadow-md transition-all active:scale-95 flex items-center justify-center space-x-1.5"
+          >
+            <Zap className="w-4 h-4 fill-amber-300" />
+            <span>Start 60s Blitz Challenge</span>
+          </button>
+        </div>
+
+        {/* 3D Interactive Flashcards Card */}
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/30 text-amber-300 border border-indigo-400/30 px-2 py-0.5 rounded-full">
+                Leitner Spaced Repetition
+              </span>
+              <span className="text-xs text-indigo-200 font-semibold">
+                3D Flip
+              </span>
+            </div>
+            <h3 className="text-lg font-black tracking-tight text-white mb-1">
+              3D Concept Flashcards
+            </h3>
+            <p className="text-xs text-indigo-100 font-medium leading-relaxed">
+              Flip through formulas, definitions, and rules with instant recall and mastery tracking.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsFlashcardsOpen(true)}
+            className="mt-4 w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 flex items-center justify-center space-x-1.5"
+          >
+            <span>🎴</span>
+            <span>Study 3D Flashcards</span>
+          </button>
+        </div>
+
+        {/* Scholar Hall of Fame & Badges Card */}
+        <div className="rounded-3xl bg-white border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
+                Weekly Standings
+              </span>
+              <span className="text-xs font-bold text-slate-500">
+                {(user.unlockedBadgeIds || []).length} / {ALL_ACHIEVEMENT_BADGES.length} Badges
+              </span>
+            </div>
+            <h3 className="text-lg font-black tracking-tight text-slate-900 mb-1">
+              Scholar Hall of Fame
+            </h3>
+            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+              See where you rank against fellow scholars across CBSE, ICSE, and IGCSE grades.
+            </p>
+            {/* Unlocked Badges Preview */}
+            <div className="flex items-center space-x-2 mt-3">
+              {ALL_ACHIEVEMENT_BADGES.slice(0, 4).map(b => (
+                <span
+                  key={b.id}
+                  className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm ${
+                    (user.unlockedBadgeIds || []).includes(b.id)
+                      ? 'bg-amber-50 border-amber-300 shadow-xs'
+                      : 'bg-slate-100 border-slate-200 opacity-30 grayscale'
+                  }`}
+                  title={`${b.title}: ${b.description}`}
+                >
+                  {b.icon}
+                </span>
+              ))}
+              <span className="text-xs text-slate-400 font-bold">+4 more</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setView('leaderboard')}
+            className="mt-4 w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs transition-all active:scale-95 flex items-center justify-center space-x-1.5 border border-slate-200"
+          >
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span>Open Leaderboard</span>
+          </button>
         </div>
       </div>
 

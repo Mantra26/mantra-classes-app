@@ -20,7 +20,9 @@ import {
   FacultyMember,
   ApprovalStatus,
   EducationBoard,
-  LabType
+  LabType,
+  AchievementBadge,
+  LeaderboardUser
 } from '../types';
 import { storage } from '../services/storage';
 import { ICSE_QUESTION_BANK } from '../data/questionBank';
@@ -39,7 +41,8 @@ export type ViewState =
   | 'bookmarks'
   | 'doubts'
   | 'admin'
-  | 'faculty';
+  | 'faculty'
+  | 'leaderboard';
 
 export interface ActiveTestState {
   title: string;
@@ -194,6 +197,24 @@ interface AppContextType {
   // Utilities
   resetAppDemoData: () => void;
   goToChapterDetail: (chapterId: string) => void;
+
+  // Gamification, Flashcards & EdTech Features
+  masteredFlashcards: string[];
+  toggleMasteredFlashcard: (cardId: string) => void;
+  addXp: (amount: number, reason?: string) => void;
+  leaderboard: LeaderboardUser[];
+  isFlashcardsOpen: boolean;
+  setIsFlashcardsOpen: (open: boolean) => void;
+  activeFlashcardTopic: { subjectId?: SubjectId; chapterId?: string } | null;
+  openFlashcards: (filter?: { subjectId?: SubjectId; chapterId?: string }) => void;
+  isSearchOpen: boolean;
+  setIsSearchOpen: (open: boolean) => void;
+  isBlitzOpen: boolean;
+  setIsBlitzOpen: (open: boolean) => void;
+  isCapsuleOpen: boolean;
+  setIsCapsuleOpen: (open: boolean) => void;
+  activeCapsuleChapter: Chapter | null;
+  openExamCapsule: (chapter: Chapter) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -219,6 +240,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [registeredStudents, setRegisteredStudents] = useState<UserProfile[]>(() => storage.getRegisteredStudents());
   const [adminPin, setAdminPinState] = useState<string>(() => storage.getAdminPin());
   const [facultyPin, setFacultyPinState] = useState<string>(() => storage.getFacultyPin());
+
+  // Gamification, Flashcards & EdTech Features
+  const [masteredFlashcards, setMasteredFlashcards] = useState<string[]>(() => storage.getMasteredFlashcards());
+  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>(() => storage.getLeaderboard());
+  const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
+  const [activeFlashcardTopic, setActiveFlashcardTopic] = useState<{ subjectId?: SubjectId; chapterId?: string } | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isBlitzOpen, setIsBlitzOpen] = useState(false);
+  const [isCapsuleOpen, setIsCapsuleOpen] = useState(false);
+  const [activeCapsuleChapter, setActiveCapsuleChapter] = useState<Chapter | null>(null);
+
+  useEffect(() => {
+    const res = storage.recordDailyActivity();
+    if (res.streakUpdated) {
+      setUser(res.profile);
+    }
+  }, []);
+
+  const toggleMasteredFlashcard = (cardId: string) => {
+    const updated = storage.toggleMasteredFlashcard(cardId);
+    setMasteredFlashcards(updated);
+  };
+
+  const addXp = (amount: number, reason?: string) => {
+    const res = storage.addXp(amount);
+    setUser(res.profile);
+    const updated = storage.getLeaderboard();
+    setLeaderboard(updated);
+  };
+
+  const openFlashcards = (filter?: { subjectId?: SubjectId; chapterId?: string }) => {
+    setActiveFlashcardTopic(filter || null);
+    setIsFlashcardsOpen(true);
+  };
+
+  const openExamCapsule = (ch: Chapter) => {
+    setActiveCapsuleChapter(ch);
+    setIsCapsuleOpen(true);
+  };
 
   const updateAdminPin = (newPin: string): boolean => {
     if (!newPin || newPin.trim().length < 4) return false;
@@ -996,6 +1056,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       demoMockTestTaken: true
     });
 
+    // Award +50 XP or +75 XP for high score
+    addXp(percentage >= 80 ? 75 : 50, 'Completed Mock Test');
+
     if (percentage >= 75) {
       confetti({
         particleCount: 80,
@@ -1275,6 +1338,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteChapter,
         resetAppDemoData,
         goToChapterDetail,
+        masteredFlashcards,
+        toggleMasteredFlashcard,
+        addXp,
+        leaderboard,
+        isFlashcardsOpen,
+        setIsFlashcardsOpen,
+        activeFlashcardTopic,
+        openFlashcards,
+        isSearchOpen,
+        setIsSearchOpen,
+        isBlitzOpen,
+        setIsBlitzOpen,
+        isCapsuleOpen,
+        setIsCapsuleOpen,
+        activeCapsuleChapter,
+        openExamCapsule,
       }}
     >
       {children}

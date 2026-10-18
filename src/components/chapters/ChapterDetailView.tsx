@@ -39,7 +39,9 @@ export const ChapterDetailView: React.FC = () => {
     currentRole,
     activeGrade,
     activeBoard,
-    updateChapter
+    updateChapter,
+    openFlashcards,
+    openExamCapsule
   } = useApp();
 
   const [doubtText, setDoubtText] = useState('');
@@ -157,22 +159,41 @@ export const ChapterDetailView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2.5">
           {currentRole === 'admin' && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95"
             >
               <Edit3 className="w-4 h-4" />
               <span>Edit Syllabus</span>
             </button>
           )}
+
+          <button
+            onClick={() => openFlashcards({ subjectId: chapter.subjectId, chapterId: chapter.id })}
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs sm:text-sm transition-all active:scale-95"
+            title="3D Flip Flashcards for this chapter"
+          >
+            <span>🎴</span>
+            <span>Study Flashcards</span>
+          </button>
+
+          <button
+            onClick={() => openExamCapsule(chapter)}
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs sm:text-sm transition-all active:scale-95"
+            title="1-Page Exam Revision Cheat Sheet / PDF"
+          >
+            <span>📑</span>
+            <span>Revision Capsule (PDF)</span>
+          </button>
+
           <button
             onClick={() => startChapterTest(chapter.id)}
-            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap"
           >
-            <GraduationCap className="w-5 h-5" />
-            <span>Take Chapter Test ({questions.length} Qs)</span>
+            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Take Test ({questions.length} Qs)</span>
           </button>
         </div>
       </div>

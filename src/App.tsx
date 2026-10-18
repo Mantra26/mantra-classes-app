@@ -21,6 +21,11 @@ import { FacultyTestRunnerModal } from './components/test/FacultyTestRunnerModal
 import { FacultyPortal } from './components/faculty/FacultyPortal';
 import { StudentAuthModal } from './components/auth/StudentAuthModal';
 import { StaffPasskeyModal } from './components/auth/StaffPasskeyModal';
+import { FlashcardsModal } from './components/flashcards/FlashcardsModal';
+import { SmartConceptSearchModal } from './components/search/SmartConceptSearchModal';
+import { DailyBlitzQuizModal } from './components/test/DailyBlitzQuizModal';
+import { ExamCapsulePrintModal } from './components/chapters/ExamCapsulePrintModal';
+import { ScholarLeaderboardView } from './components/gamification/ScholarLeaderboardView';
 
 export const AppContent: React.FC = () => {
   const { view, activeTest, currentRole } = useApp();
@@ -49,6 +54,7 @@ export const AppContent: React.FC = () => {
           {view === 'analytics' && <PerformanceAnalytics />}
           {view === 'bookmarks' && <BookmarksView />}
           {view === 'doubts' && <DoubtsView />}
+          {view === 'leaderboard' && <ScholarLeaderboardView />}
         </main>
       </div>
 
@@ -60,6 +66,10 @@ export const AppContent: React.FC = () => {
       <GraphicalLabsModal />
       <VideoPlayerModal />
       <FacultyTestRunnerModal />
+      <FlashcardsModal />
+      <SmartConceptSearchModal />
+      <DailyBlitzQuizModal />
+      <ExamCapsulePrintModal />
     </div>
   );
 };

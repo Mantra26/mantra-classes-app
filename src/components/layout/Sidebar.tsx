@@ -18,7 +18,10 @@ import {
   ClipboardCheck,
   Lock,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Trophy,
+  Zap,
+  Search
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -43,7 +46,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     pendingApprovalsCount,
     setIsStaffModalOpen,
     logoutStudent,
-    returnToStudentPortal
+    returnToStudentPortal,
+    setIsFlashcardsOpen,
+    setIsBlitzOpen,
+    setIsSearchOpen
   } = useApp();
 
   const mySubmissions = studentSubmissions.filter(s => s.studentId === user.id);
@@ -69,6 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'analytics', label: 'Scorecards & Analytics', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'bookmarks', label: 'Saved Tough Questions', icon: <BookmarkCheck className="w-5 h-5" /> },
     { id: 'doubts', label: 'Messages & Doubts Desk', icon: <HelpCircle className="w-5 h-5 text-indigo-600" />, badge: 'Direct' },
+    { id: 'leaderboard', label: 'Scholar Leaderboard', icon: <Trophy className="w-5 h-5 text-amber-500" />, badge: 'Hall of Fame' },
   ];
 
   const facultyNavItems: { id: ViewState; label: string; icon: React.ReactNode; badge?: string }[] = [
@@ -96,6 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'doubts', label: 'Student Messages & Doubts', icon: <HelpCircle className="w-5 h-5 text-indigo-500" /> },
     { id: 'test-series', label: 'Test Series Bank', icon: <GraduationCap className="w-5 h-5" /> },
     { id: 'analytics', label: 'Student Performance Data', icon: <BarChart3 className="w-5 h-5" /> },
+    { id: 'leaderboard', label: 'Student Leaderboard', icon: <Trophy className="w-5 h-5 text-amber-500" /> },
   ];
 
   const activeNavItems =
@@ -243,6 +251,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </button>
             );
           })}
+        </div>
+
+        {/* Quick Scholar Power Tools */}
+        <div className="px-3 pt-2 pb-1 space-y-1.5 border-t border-slate-100">
+          <div className="text-[10px] font-black uppercase text-slate-400 px-2 tracking-wider">
+            Study Power Tools
+          </div>
+          <button
+            onClick={() => {
+              setIsBlitzOpen(true);
+              if (isOpen) onClose();
+            }}
+            className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-900 bg-amber-50/80 hover:bg-amber-100 border border-amber-200 transition-all text-left"
+          >
+            <Zap className="w-4 h-4 text-amber-600 fill-amber-500 shrink-0" />
+            <span>60s Daily Blitz Quiz</span>
+          </button>
+          <button
+            onClick={() => {
+              setIsFlashcardsOpen(true);
+              if (isOpen) onClose();
+            }}
+            className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200 transition-all text-left"
+          >
+            <span className="text-sm shrink-0">🎴</span>
+            <span>3D Flip Flashcards</span>
+          </button>
+          <button
+            onClick={() => {
+              setIsSearchOpen(true);
+              if (isOpen) onClose();
+            }}
+            className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all text-left"
+          >
+            <Search className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>AI Concept Solver</span>
+          </button>
         </div>
 
         {/* Pro / UPI Upgrade Card */}

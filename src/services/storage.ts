@@ -13,16 +13,21 @@ import {
   StudentTestSubmission,
   FacultyMember,
   ApprovalStatus,
-  EducationBoard
+  EducationBoard,
+  AchievementBadge,
+  LeaderboardUser
 } from '../types';
 import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS, INITIAL_REGISTERED_STUDENTS, INITIAL_TRANSACTIONS } from '../data/defaultUser';
 import { ICSE_CHAPTERS } from '../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../data/questionBank';
+import { ALL_ACHIEVEMENT_BADGES, SEED_LEADERBOARD } from '../data/gamificationData';
 
 const STORAGE_KEYS = {
   USER: 'mantra_user_profile',
   ROLE: 'mantra_user_role',
   REGISTERED_STUDENTS: 'mantra_registered_students',
+  MASTERED_FLASHCARDS: 'mantra_mastered_flashcards',
+  LEADERBOARD: 'mantra_leaderboard_data',
   ADMIN_PIN: 'mantra_admin_pin',
   FACULTY_PIN: 'mantra_faculty_pin',
   ACTIVE_GRADE: 'mantra_active_grade',
@@ -824,6 +829,132 @@ export const storage = {
     });
     localStorage.setItem(STORAGE_KEYS.FACULTY_TESTS, JSON.stringify(updated));
     return updated;
+  },
+
+  getMasteredFlashcards(): string[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.MASTERED_FLASHCARDS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  toggleMasteredFlashcard(cardId: string): string[] {
+    const list = this.getMasteredFlashcards();
+    const exists = list.includes(cardId);
+    const updated = exists ? list.filter(id => id !== cardId) : [...list, cardId];
+    localStorage.setItem(STORAGE_KEYS.MASTERED_FLASHCARDS, JSON.stringify(updated));
+    return updated;
+  },
+
+  addXp(points: number): { profile: UserProfile; newBadges: AchievementBadge[] } {
+    const user = this.getUser();
+    const currentXp = user.xp || 0;
+    const newXp = currentXp + points;
+    const currentBadges = user.unlockedBadgeIds || [];
+    const newBadges: AchievementBadge[] = [];
+
+    ALL_ACHIEVEMENT_BADGES.forEach(b => {
+      if (!currentBadges.includes(b.id)) {
+        if (b.id === 'badge-first-quiz' && points > 0) {
+          newBadges.push(b);
+        } else if (b.id === 'badge-xp-100' && newXp >= 100) {
+          newBadges.push(b);
+        } else if (b.id === 'badge-xp-500' && newXp >= 500) {
+          newBadges.push(b);
+        } else if (b.id === 'badge-xp-1000' && newXp >= 1000) {
+          newBadges.push(b);
+        }
+      }
+    });
+
+    const updatedBadges = [...currentBadges, ...newBadges.map(b => b.id)];
+    const updatedProfile: UserProfile = {
+      ...user,
+      xp: newXp,
+      unlockedBadgeIds: updatedBadges
+    };
+    this.saveUser(updatedProfile);
+    this.saveRegisteredStudent(updatedProfile);
+    return { profile: updatedProfile, newBadges };
+  },
+
+  recordDailyActivity(): { profile: UserProfile; streakUpdated: boolean } {
+    const user = this.getUser();
+    const today = new Date().toISOString().slice(0, 10);
+    const lastActive = user.lastActiveDate ? user.lastActiveDate.slice(0, 10) : '';
+
+    if (lastActive === today) {
+      return { profile: user, streakUpdated: false };
+    }
+
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    let streak = user.streakDays || 0;
+    if (lastActive === yesterday) {
+      streak += 1;
+    } else {
+      streak = 1;
+    }
+
+    const longestStreak = Math.max(user.longestStreak || 0, streak);
+    const currentBadges = user.unlockedBadgeIds || [];
+    const newBadges: AchievementBadge[] = [];
+
+    ALL_ACHIEVEMENT_BADGES.forEach(b => {
+      if (!currentBadges.includes(b.id)) {
+        if (b.id === 'badge-streak-3' && streak >= 3) newBadges.push(b);
+        if (b.id === 'badge-streak-7' && streak >= 7) newBadges.push(b);
+      }
+    });
+
+    const updatedProfile: UserProfile = {
+      ...user,
+      streakDays: streak,
+      longestStreak,
+      lastActiveDate: new Date().toISOString(),
+      unlockedBadgeIds: [...currentBadges, ...newBadges.map(b => b.id)]
+    };
+    this.saveUser(updatedProfile);
+    this.saveRegisteredStudent(updatedProfile);
+    return { profile: updatedProfile, streakUpdated: true };
+  },
+
+  getLeaderboard(): LeaderboardUser[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.LEADERBOARD);
+      let list: LeaderboardUser[] = data ? JSON.parse(data) : SEED_LEADERBOARD;
+      const user = this.getUser();
+      if (user && user.name) {
+        const idx = list.findIndex(u => u.id === user.id || u.name === user.name);
+        const userEntry: LeaderboardUser = {
+          id: user.id || 'current-user',
+          name: user.name,
+          grade: user.targetGrade || '7',
+          board: user.board || 'ICSE',
+          xp: user.xp || 680,
+          streakDays: user.streakDays || 3,
+          rank: 1,
+          avatar: user.avatar,
+          badgesCount: (user.unlockedBadgeIds || []).length
+        };
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...userEntry };
+        } else {
+          list.push(userEntry);
+        }
+      }
+      list.sort((a, b) => b.xp - a.xp);
+      list = list.map((item, index) => ({ ...item, rank: index + 1 }));
+      localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(list));
+      return list;
+    } catch {
+      return SEED_LEADERBOARD;
+    }
+  },
+
+  saveLeaderboard(data: LeaderboardUser[]): void {
+    localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(data));
   },
 
   resetAll(): void {

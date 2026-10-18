@@ -14,7 +14,10 @@ import {
   Award,
   Lock,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Search,
+  Zap,
+  Trophy
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -37,7 +40,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
     pendingApprovalsCount,
     setIsStaffModalOpen,
     logoutStudent,
-    returnToStudentPortal
+    returnToStudentPortal,
+    setIsSearchOpen,
+    setIsBlitzOpen
   } = useApp();
 
   const gradeLabel = (activeGrade === '11' || activeGrade === '12') ? `Class ${activeGrade} Commerce` : `Grade ${activeGrade}`;
@@ -68,6 +73,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
         return 'Saved Tough Questions & Notes';
       case 'doubts':
         return 'Doubt Desk with Uma Shukla';
+      case 'leaderboard':
+        return 'Mantra Scholar Hall of Fame & Leaderboard';
       default:
         return 'Mantra Classes';
     }
@@ -141,6 +148,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             </select>
           </div>
 
+          {/* Quick AI Concept Search Trigger */}
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all border border-slate-200/80 shadow-xs"
+            title="Instant Concept & Formula Solver (Ctrl+K)"
+          >
+            <Search className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden md:inline">Search Concepts</span>
+            <kbd className="hidden xl:inline-block px-1.5 py-0.2 rounded bg-white text-[10px] text-slate-400 font-mono border border-slate-200">
+              Ctrl+K
+            </kbd>
+          </button>
+
           {/* ROLE ACCESS CONTROLS (RESTRICTED) */}
           {currentRole === 'student' ? (
             <div className="flex items-center space-x-2">
@@ -202,13 +222,45 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
           {currentRole === 'student' && (
             <>
               {/* Daily Streak */}
-              <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200/60 text-orange-700 text-xs font-semibold shadow-xs">
+              <div
+                className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200/60 text-orange-700 text-xs font-bold shadow-xs cursor-default"
+                title={`${user.streakDays || 3} Day Study Streak`}
+              >
                 <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                <span>{user.streakDays}d Streak</span>
+                <span>{user.streakDays || 3}d</span>
               </div>
 
+              {/* Scholar XP & Leaderboard Link */}
+              <button
+                onClick={() => setView('leaderboard')}
+                className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-indigo-800 text-xs font-black shadow-xs transition-colors"
+                title="View Scholar Hall of Fame & Leaderboard"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                <span>{user.xp || 680} XP</span>
+              </button>
+
+              {/* 60-Second Daily Blitz Trigger */}
+              <button
+                onClick={() => setIsBlitzOpen(true)}
+                className="hidden xl:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-xs transition-all active:scale-95"
+                title="Play 60-Second Daily Rapid Blitz"
+              >
+                <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                <span>60s Blitz</span>
+              </button>
+
+              {/* Leaderboard Trophy Icon */}
+              <button
+                onClick={() => setView('leaderboard')}
+                className="p-1.5 rounded-xl text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-colors"
+                title="Scholar Leaderboard"
+              >
+                <Trophy className="w-4 h-4" />
+              </button>
+
               {/* Coins */}
-              <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-800 text-xs font-semibold">
+              <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-800 text-xs font-semibold">
                 <Coins className="w-4 h-4 text-amber-500 fill-amber-500" />
                 <span>{user.coins} Coins</span>
               </div>

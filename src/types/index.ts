@@ -241,6 +241,10 @@ export interface UserProfile {
   isProMember: boolean;
   proExpiryDate?: string;
   streakDays: number;
+  longestStreak?: number;
+  lastActiveDate?: string;
+  xp?: number;
+  unlockedBadgeIds?: string[];
   totalTestsTaken: number;
   averageScorePercentage: number;
   coins: number;
@@ -252,6 +256,41 @@ export interface UserProfile {
   pendingAmount?: number;
   pendingUtr?: string;
   authorizedModules?: string[];
+}
+
+export interface Flashcard {
+  id: string;
+  chapterId: string;
+  chapterTitle: string;
+  subjectId: SubjectId;
+  front: string;
+  back: string;
+  category?: string;
+  mnemonicOrTip?: string;
+}
+
+export interface AchievementBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  xpReward: number;
+  category: 'streak' | 'accuracy' | 'milestone' | 'subject';
+  isUnlocked?: boolean;
+  unlockedAt?: string;
+}
+
+export interface LeaderboardUser {
+  rank: number;
+  id: string;
+  name: string;
+  avatar: string;
+  grade: string;
+  board?: EducationBoard;
+  streakDays: number;
+  xp: number;
+  testsCompleted: number;
+  badgesCount: number;
 }
 
 export interface PaymentTransaction {
