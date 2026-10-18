@@ -930,10 +930,11 @@ export const storage = {
         const userEntry: LeaderboardUser = {
           id: user.id || 'current-user',
           name: user.name,
-          grade: user.targetGrade || '7',
+          grade: user.grade || '7',
           board: user.board || 'ICSE',
           xp: user.xp || 680,
           streakDays: user.streakDays || 3,
+          testsCompleted: user.totalTestsTaken || 0,
           rank: 1,
           avatar: user.avatar,
           badgesCount: (user.unlockedBadgeIds || []).length

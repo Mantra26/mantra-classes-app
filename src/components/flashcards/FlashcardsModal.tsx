@@ -297,7 +297,7 @@ export const FlashcardsModal: React.FC = () => {
                         <span>Click card or press <b>Spacebar</b> to reveal answer</span>
                       </div>
                       <span className="text-[11px] text-slate-400">
-                        {currentCard.difficulty.toUpperCase()}
+                        {(currentCard.difficulty || 'Core Concept').toUpperCase()}
                       </span>
                     </div>
                   </div>
@@ -327,9 +327,9 @@ export const FlashcardsModal: React.FC = () => {
                         </div>
                       )}
 
-                      {currentCard.mnemonic && (
+                      {(currentCard.mnemonic || currentCard.mnemonicOrTip) && (
                         <div className="p-2.5 rounded-xl bg-indigo-800/40 border border-indigo-600/50 text-xs text-amber-200 font-medium">
-                          💡 <b>Memory Tip:</b> {currentCard.mnemonic}
+                          💡 <b>Memory Tip:</b> {currentCard.mnemonic || currentCard.mnemonicOrTip}
                         </div>
                       )}
                     </div>

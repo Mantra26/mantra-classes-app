@@ -267,6 +267,9 @@ export interface Flashcard {
   back: string;
   category?: string;
   mnemonicOrTip?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  formula?: string;
+  mnemonic?: string;
 }
 
 export interface AchievementBadge {

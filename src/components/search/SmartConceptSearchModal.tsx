@@ -49,7 +49,7 @@ export const SmartConceptSearchModal: React.FC = () => {
         f.front.toLowerCase().includes(q) ||
         f.back.toLowerCase().includes(q) ||
         (f.formula && f.formula.toLowerCase().includes(q)) ||
-        f.category.toLowerCase().includes(q)
+        (f.category && f.category.toLowerCase().includes(q))
     ).slice(0, 8);
 
     const matchingQuestions = ICSE_QUESTION_BANK.filter(
@@ -62,8 +62,8 @@ export const SmartConceptSearchModal: React.FC = () => {
     const matchingChapters = ICSE_CHAPTERS.filter(
       ch =>
         ch.title.toLowerCase().includes(q) ||
-        (ch.description && ch.description.toLowerCase().includes(q)) ||
-        ch.topics.some(t => t.toLowerCase().includes(q))
+        (ch.summary && ch.summary.toLowerCase().includes(q)) ||
+        (ch.keyConcepts && ch.keyConcepts.some((t: string) => t.toLowerCase().includes(q)))
     ).slice(0, 6);
 
     return {
@@ -235,7 +235,7 @@ export const SmartConceptSearchModal: React.FC = () => {
                         <div className="flex items-center justify-between text-[11px] font-bold text-indigo-900 mb-1">
                           <span className="uppercase">{q.topic} • Grade {q.gradeLevel || '7'}</span>
                           <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-black">
-                            Correct: {q.correctOptionId.toUpperCase()}
+                            Correct: {q.correctOptionIndex !== undefined ? `Option ${String.fromCharCode(65 + q.correctOptionIndex)}` : 'Verified'}
                           </span>
                         </div>
                         <h4 className="text-sm font-bold text-slate-900 mb-2">{q.text}</h4>
@@ -269,7 +269,7 @@ export const SmartConceptSearchModal: React.FC = () => {
                             {c.title}
                           </h4>
                           <span className="text-[11px] text-slate-500">
-                            {c.topics.length} Key Topics Covered
+                            {(c.keyConcepts || []).length} Key Topics Covered
                           </span>
                         </div>
                         <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />

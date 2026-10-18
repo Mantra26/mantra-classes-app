@@ -28,7 +28,7 @@ export const DailyBlitzQuizModal: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(60);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [score, setScore] = useState(0);
   const [comboStreak, setComboStreak] = useState(0);
@@ -52,7 +52,7 @@ export const DailyBlitzQuizModal: React.FC = () => {
     setQuestions(shuffled.slice(0, 5));
     setCurrentIdx(0);
     setSecondsRemaining(60);
-    setSelectedAnswer(null);
+    setSelectedAnswerIndex(null);
     setIsAnswerRevealed(false);
     setScore(0);
     setComboStreak(0);
@@ -77,14 +77,14 @@ export const DailyBlitzQuizModal: React.FC = () => {
     return () => clearInterval(timer);
   }, [isBlitzOpen, isFinished, secondsRemaining, score, maxCombo]);
 
-  const handleSelectOption = (optionId: string) => {
+  const handleSelectOption = (optionIndex: number) => {
     if (isAnswerRevealed || isFinished) return;
 
-    setSelectedAnswer(optionId);
+    setSelectedAnswerIndex(optionIndex);
     setIsAnswerRevealed(true);
 
     const currQ = questions[currentIdx];
-    const isCorrect = optionId === currQ.correctOptionId;
+    const isCorrect = optionIndex === (currQ.correctOptionIndex ?? 0);
 
     let newScore = score;
     let newCombo = comboStreak;
@@ -102,7 +102,7 @@ export const DailyBlitzQuizModal: React.FC = () => {
     setTimeout(() => {
       if (currentIdx + 1 < questions.length) {
         setCurrentIdx(prev => prev + 1);
-        setSelectedAnswer(null);
+        setSelectedAnswerIndex(null);
         setIsAnswerRevealed(false);
       } else {
         finishGame(newScore, Math.max(maxCombo, newCombo));
@@ -257,9 +257,9 @@ export const DailyBlitzQuizModal: React.FC = () => {
 
               {/* Options */}
               <div className="space-y-2.5">
-                {currentQ.options.map(opt => {
-                  const isSelected = selectedAnswer === opt.id;
-                  const isCorrect = opt.id === currentQ.correctOptionId;
+                {(currentQ.options || []).map((optText, optIdx) => {
+                  const isSelected = selectedAnswerIndex === optIdx;
+                  const isCorrect = optIdx === (currentQ.correctOptionIndex ?? 0);
 
                   let btnStyle = 'bg-slate-50 border-slate-200 text-slate-800 hover:border-amber-400 hover:bg-amber-50/50';
 
@@ -273,18 +273,20 @@ export const DailyBlitzQuizModal: React.FC = () => {
                     }
                   }
 
+                  const optLetter = String.fromCharCode(65 + optIdx);
+
                   return (
                     <button
-                      key={opt.id}
-                      onClick={() => handleSelectOption(opt.id)}
+                      key={optIdx}
+                      onClick={() => handleSelectOption(optIdx)}
                       disabled={isAnswerRevealed}
                       className={`w-full p-3.5 rounded-2xl border-2 text-left font-bold text-xs sm:text-sm flex items-center justify-between transition-all ${btnStyle}`}
                     >
                       <div className="flex items-center space-x-3">
                         <span className="w-7 h-7 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xs font-black shrink-0">
-                          {opt.id.toUpperCase()}
+                          {optLetter}
                         </span>
-                        <span>{opt.text}</span>
+                        <span>{optText}</span>
                       </div>
 
                       {isAnswerRevealed && isCorrect && (

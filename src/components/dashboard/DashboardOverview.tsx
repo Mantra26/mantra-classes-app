@@ -376,7 +376,7 @@ export const DashboardOverview: React.FC = () => {
                       ? 'bg-amber-50 border-amber-300 shadow-xs'
                       : 'bg-slate-100 border-slate-200 opacity-30 grayscale'
                   }`}
-                  title={`${b.title}: ${b.description}`}
+                  title={`${b.name}: ${b.description}`}
                 >
                   {b.icon}
                 </span>

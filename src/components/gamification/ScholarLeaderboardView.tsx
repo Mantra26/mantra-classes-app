@@ -205,7 +205,7 @@ export const ScholarLeaderboardView: React.FC = () => {
                   >
                     <div className="text-2xl mb-1">{badge.icon}</div>
                     <div className="text-xs font-black text-slate-900 leading-tight">
-                      {badge.title}
+                      {badge.name}
                     </div>
                     <div className="text-[10px] text-slate-500 mt-1 line-clamp-2">
                       {badge.description}

@@ -100,7 +100,7 @@ export const ExamCapsulePrintModal: React.FC = () => {
               <span>Chapter Mind Map & Core Concept</span>
             </div>
             <p className="text-xs text-indigo-950 font-medium leading-relaxed">
-              {chapter.mindMapSummary || chapter.description}
+              {chapter.mindMapSummary || chapter.summary}
             </p>
           </div>
 
@@ -113,7 +113,7 @@ export const ExamCapsulePrintModal: React.FC = () => {
                 <span>Must-Master Syllabus Concepts</span>
               </h4>
               <ul className="space-y-2 text-xs">
-                {chapter.topics.map((t, idx) => (
+                {(chapter.keyConcepts || []).map((t: string, idx: number) => (
                   <li key={idx} className="flex items-start space-x-2">
                     <span className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                       {idx + 1}
