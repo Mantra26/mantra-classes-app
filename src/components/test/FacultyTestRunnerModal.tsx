@@ -54,15 +54,18 @@ export const FacultyTestRunnerModal: React.FC = () => {
   };
 
   const handleAnswerChange = (questionId: string, partial: Partial<UserAnswer>) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: {
-        questionId,
-        timeSpentSeconds: (prev[questionId]?.timeSpentSeconds || 0) + 1,
-        ...prev[questionId],
-        ...partial
-      }
-    }));
+    setAnswers(prev => {
+      const existing = prev[questionId];
+      return {
+        ...prev,
+        [questionId]: {
+          ...existing,
+          questionId,
+          ...partial,
+          timeSpentSeconds: (existing?.timeSpentSeconds || 0) + 1
+        }
+      };
+    });
   };
 
   const toggleFlag = (questionId: string) => {

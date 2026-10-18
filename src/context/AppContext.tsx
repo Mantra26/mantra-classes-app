@@ -19,7 +19,8 @@ import {
   StudentTestSubmission,
   FacultyMember,
   ApprovalStatus,
-  EducationBoard
+  EducationBoard,
+  LabType
 } from '../types';
 import { storage } from '../services/storage';
 import { ICSE_QUESTION_BANK } from '../data/questionBank';
@@ -67,8 +68,8 @@ interface AppContextType {
   setSelectedChapterId: (id: string | null) => void;
   activeVideo: ChapterResource | null;
   setActiveVideo: (res: ChapterResource | null) => void;
-  activeLabType: 'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | null;
-  setActiveLabType: (lab: 'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | null) => void;
+  activeLabType: LabType | null;
+  setActiveLabType: (lab: LabType | null) => void;
 
   // Chapters & Dynamic Admin Resources
   chapters: Chapter[];
@@ -168,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedSubjectId, setSelectedSubjectId] = useState<SubjectId | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<ChapterResource | null>(null);
-  const [activeLabType, setActiveLabType] = useState<'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | null>(null);
+  const [activeLabType, setActiveLabType] = useState<LabType | null>(null);
 
   // Dynamic reactive chapters
   const [chapters, setChapters] = useState<Chapter[]>(() => storage.getChapters());

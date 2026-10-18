@@ -63,13 +63,15 @@ export interface PptSlide {
   examMantra: string;
 }
 
+export type LabType = 'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | 'chemical_equation';
+
 export interface ChapterResource {
   id?: string;
   type: 'video' | 'graphical_lab' | 'notes_pdf' | 'formula_sheet' | 'ppt_presentation';
   title: string;
   durationOrPages?: string;
   thumbnailUrl?: string;
-  labType?: 'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | 'chemical_equation';
+  labType?: LabType;
   videoUrl?: string;
   pptUrl?: string;
   slideCount?: number;
