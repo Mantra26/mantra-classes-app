@@ -12,7 +12,9 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  MessageSquare
+  MessageSquare,
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 export const AssignedTestsView: React.FC = () => {
@@ -27,6 +29,7 @@ export const AssignedTestsView: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'evaluated'>('pending');
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+  const [zoomSheet, setZoomSheet] = useState<any | null>(null);
 
   // Filter tests matching active grade or 'all' and active board and only approved tests
   const gradeTests = facultyTests.filter(t => {
@@ -355,6 +358,36 @@ export const AssignedTestsView: React.FC = () => {
                             <div className="text-slate-600 font-mono whitespace-pre-wrap bg-white p-2.5 rounded-xl border border-slate-200">
                               {ans.userText || (ans.userMcqIndex !== undefined ? `Selected Option ${String.fromCharCode(65 + ans.userMcqIndex)}` : String(ans.userBoolean))}
                             </div>
+                            {ans.uploadedAttachment && (
+                              <div className="mt-2 p-2 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between">
+                                <div className="flex items-center space-x-2 min-w-0">
+                                  {ans.uploadedAttachment.type === 'image' ? (
+                                    <img
+                                      src={ans.uploadedAttachment.dataUrl}
+                                      alt="Your uploaded solution"
+                                      className="w-10 h-10 object-cover rounded-lg border border-indigo-200 cursor-pointer"
+                                      onClick={() => setZoomSheet(ans.uploadedAttachment)}
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-indigo-200 text-indigo-800 font-bold text-xs flex items-center justify-center shrink-0">
+                                      PDF
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-xs text-slate-800 truncate">{ans.uploadedAttachment.name}</div>
+                                    <div className="text-[10px] text-indigo-600 font-medium">Your Uploaded Answer Sheet</div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setZoomSheet(ans.uploadedAttachment)}
+                                  className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-2xs shrink-0 flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>View Sheet</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -364,6 +397,39 @@ export const AssignedTestsView: React.FC = () => {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Answer Sheet Zoom Modal */}
+      {zoomSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold">{zoomSheet.name}</span>
+              <button
+                type="button"
+                onClick={() => setZoomSheet(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center bg-slate-100 max-h-[80vh]">
+              {zoomSheet.type === 'image' ? (
+                <img
+                  src={zoomSheet.dataUrl}
+                  alt="Enlarged handwritten sheet"
+                  className="max-h-[75vh] object-contain rounded-xl shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={zoomSheet.dataUrl}
+                  title="PDF Sheet Preview"
+                  className="w-full h-[70vh] rounded-xl"
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -62,6 +62,7 @@ export const AdminPanel: React.FC = () => {
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
   const [previewPpt, setPreviewPpt] = useState<ChapterResource | null>(null);
   const [previewTest, setPreviewTest] = useState<FacultyTestPaper | null>(null);
+  const [previewSheetModal, setPreviewSheetModal] = useState<any | null>(null);
   const [successToast, setSuccessToast] = useState('');
 
   // Faculty form state
@@ -1008,6 +1009,35 @@ export const AdminPanel: React.FC = () => {
                           <div className="font-mono text-slate-700 whitespace-pre-wrap bg-slate-50 p-2 rounded-lg border border-slate-100 text-[11px]">
                             {ans.userText || (ans.userMcqIndex !== undefined ? `Option: ${String.fromCharCode(65 + ans.userMcqIndex)}` : String(ans.userBoolean))}
                           </div>
+                          {ans.uploadedAttachment && (
+                            <div className="mt-2 p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between">
+                              <div className="flex items-center space-x-2.5 min-w-0">
+                                {ans.uploadedAttachment.type === 'image' ? (
+                                  <img
+                                    src={ans.uploadedAttachment.dataUrl}
+                                    alt="Student sheet"
+                                    className="w-12 h-12 object-cover rounded-lg border border-indigo-200 cursor-pointer"
+                                    onClick={() => setPreviewSheetModal(ans.uploadedAttachment)}
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-lg bg-indigo-200 text-indigo-800 font-bold text-xs flex items-center justify-center shrink-0">
+                                    PDF
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-slate-800 truncate">{ans.uploadedAttachment.name}</div>
+                                  <div className="text-[10px] text-indigo-600 font-medium">Uploaded Answer Sheet</div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewSheetModal(ans.uploadedAttachment)}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-colors shrink-0"
+                              >
+                                View Sheet
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -2148,6 +2178,39 @@ export const AdminPanel: React.FC = () => {
         pptResource={previewPpt}
         onClose={() => setPreviewPpt(null)}
       />
+
+      {/* Answer Sheet Zoom Modal */}
+      {previewSheetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold">{previewSheetModal.name}</span>
+              <button
+                type="button"
+                onClick={() => setPreviewSheetModal(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center bg-slate-100 max-h-[80vh]">
+              {previewSheetModal.type === 'image' ? (
+                <img
+                  src={previewSheetModal.dataUrl}
+                  alt="Enlarged student answer sheet"
+                  className="max-h-[75vh] object-contain rounded-xl shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={previewSheetModal.dataUrl}
+                  title="PDF Sheet Preview"
+                  className="w-full h-[70vh] rounded-xl"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,7 +15,10 @@ import {
   Video,
   Presentation,
   UserCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  Lock,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,7 +40,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     facultyTests,
     studentSubmissions,
     activeFacultyMember,
-    pendingApprovalsCount
+    pendingApprovalsCount,
+    setIsStaffModalOpen,
+    logoutStudent,
+    returnToStudentPortal
   } = useApp();
 
   const mySubmissions = studentSubmissions.filter(s => s.studentId === user.id);
@@ -62,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'custom-builder', label: 'Custom Test Builder', icon: <Sparkles className="w-5 h-5 text-amber-500" />, badge: 'Smart' },
     { id: 'analytics', label: 'Scorecards & Analytics', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'bookmarks', label: 'Saved Tough Questions', icon: <BookmarkCheck className="w-5 h-5" /> },
-    { id: 'doubts', label: 'Doubts with Uma Ma\'am', icon: <HelpCircle className="w-5 h-5" /> },
+    { id: 'doubts', label: 'Messages & Doubts Desk', icon: <HelpCircle className="w-5 h-5 text-indigo-600" />, badge: 'Direct' },
   ];
 
   const facultyNavItems: { id: ViewState; label: string; icon: React.ReactNode; badge?: string }[] = [
@@ -75,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'assigned-tests', label: 'Student Test Papers', icon: <ClipboardCheck className="w-5 h-5 text-emerald-600" /> },
     { id: 'subjects', label: 'Curriculum & Notes', icon: <BookOpen className="w-5 h-5" /> },
     { id: 'analytics', label: 'Student Performance', icon: <BarChart3 className="w-5 h-5" /> },
-    { id: 'doubts', label: 'Student Doubts Desk', icon: <HelpCircle className="w-5 h-5" /> }
+    { id: 'doubts', label: 'Student Messages & Doubts', icon: <HelpCircle className="w-5 h-5 text-indigo-500" /> }
   ];
 
   const adminNavItems: { id: ViewState; label: string; icon: React.ReactNode; badge?: string }[] = [
@@ -87,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     { id: 'assigned-tests', label: 'Student Tests & HW', icon: <ClipboardCheck className="w-5 h-5 text-emerald-600" /> },
     { id: 'subjects', label: 'Browse Chapter Materials', icon: <BookOpen className="w-5 h-5" /> },
+    { id: 'doubts', label: 'Student Messages & Doubts', icon: <HelpCircle className="w-5 h-5 text-indigo-500" /> },
     { id: 'test-series', label: 'Test Series Bank', icon: <GraduationCap className="w-5 h-5" /> },
     { id: 'analytics', label: 'Student Performance Data', icon: <BarChart3 className="w-5 h-5" /> },
   ];
@@ -148,35 +155,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Role Switcher Pill in Sidebar */}
+        {/* Role Identity Pill in Sidebar */}
         <div className="p-3 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 shadow-xs">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 min-w-0">
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
                   currentRole === 'admin'
                     ? 'bg-amber-500 text-slate-950'
+                    : currentRole === 'faculty'
+                    ? 'bg-purple-600 text-white'
                     : 'bg-indigo-600 text-white'
                 }`}
               >
-                {currentRole === 'admin' ? 'US' : 'AS'}
+                {currentRole === 'admin' ? 'US' : currentRole === 'faculty' ? (activeFacultyMember?.name?.slice(0, 2).toUpperCase() || 'FC') : (user.name ? user.name.slice(0, 2).toUpperCase() : 'ST')}
               </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900">
-                  {currentRole === 'admin' ? 'Uma Shukla' : 'Aarav Sharma'}
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 truncate">
+                  {currentRole === 'admin' ? 'Uma Shukla' : currentRole === 'faculty' ? (activeFacultyMember?.name || 'Faculty') : (user.name || 'Student')}
                 </div>
-                <div className="text-[10px] text-slate-500">
-                  {currentRole === 'admin' ? 'Educator (Admin)' : 'Class 7-A Student'}
+                <div className="text-[10px] text-slate-500 truncate">
+                  {currentRole === 'admin' ? 'Educator (Admin)' : currentRole === 'faculty' ? 'Faculty Member' : (user.mobileNumber ? `+91 ${user.mobileNumber}` : user.grade)}
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={toggleRole}
-              className="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors"
-            >
-              Switch
-            </button>
+            {currentRole !== 'student' && (
+              <button
+                onClick={returnToStudentPortal}
+                className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors shrink-0"
+                title="Return to Student View"
+              >
+                Exit
+              </button>
+            )}
           </div>
         </div>
 
@@ -262,6 +274,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <span>{user.isProMember ? 'View Subscription' : 'Pay via UPI / Scanner'}</span>
           </button>
         </div>
+
+        {/* Staff Portal Access Button in Sidebar */}
+        {currentRole === 'student' && (
+          <div className="p-3 border-t border-slate-100 bg-slate-50/70">
+            <button
+              onClick={() => setIsStaffModalOpen(true)}
+              className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition-all shadow-xs"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Staff Portal (Admin / Faculty)</span>
+            </button>
+          </div>
+        )}
 
         {/* Footer info */}
         <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">

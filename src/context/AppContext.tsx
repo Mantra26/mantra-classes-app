@@ -76,6 +76,14 @@ interface AppContextType {
   addChapterResource: (chapterId: string, resource: ChapterResource) => void;
   deleteChapterResource: (chapterId: string, resourceTitle: string) => void;
 
+  // Staff & Student Auth
+  isStaffModalOpen: boolean;
+  setIsStaffModalOpen: (open: boolean) => void;
+  loginStudent: (studentData: Partial<UserProfile>) => void;
+  logoutStudent: () => void;
+  verifyStaffPinAndSwitch: (role: UserRole, pin: string) => boolean;
+  returnToStudentPortal: () => void;
+
   // Data & Models
   user: UserProfile;
   updateUser: (fields: Partial<UserProfile>) => void;
@@ -85,10 +93,23 @@ interface AppContextType {
   toggleBookmark: (questionId: string, notes?: string) => void;
   updateBookmarkNotes: (questionId: string, notes: string) => void;
   doubts: DoubtNote[];
-  addDoubtNote: (chapterId: string, topic: string, note: string) => void;
+  addDoubtNote: (
+    chapterId: string,
+    topic: string,
+    note: string,
+    options?: {
+      recipientRole?: 'faculty' | 'admin';
+      recipientId?: string;
+      recipientName?: string;
+      subjectId?: SubjectId;
+      subjectName?: string;
+      attachmentUrl?: string;
+      attachmentName?: string;
+    }
+  ) => void;
   toggleDoubtStatus: (id: string) => void;
   deleteDoubtNote: (id: string) => void;
-  replyToDoubtNote: (doubtId: string, replyText: string) => void;
+  replyToDoubtNote: (doubtId: string, replyText: string, repliedBy?: string) => void;
 
   // Custom Presets
   customPresets: CustomTestConfig[];
@@ -180,6 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [doubts, setDoubts] = useState<DoubtNote[]>(() => storage.getDoubts());
   const [customPresets, setCustomPresets] = useState<CustomTestConfig[]>(() => storage.getCustomPresets());
   const [transactions, setTransactions] = useState<PaymentTransaction[]>(() => storage.getTransactions());
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
 
   // Multi-Grade, Board and Faculty Tests State
   const [activeGrade, setActiveGradeState] = useState<GradeLevel>(() => storage.getActiveGrade());
@@ -361,6 +383,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleRoleChange = (role: UserRole) => {
     setCurrentRole(role);
+    storage.saveRole(role);
     if (role === 'admin') {
       setView('admin');
     } else if (role === 'faculty') {
@@ -371,11 +394,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleRole = () => {
-    let nextRole: UserRole = 'student';
-    if (currentRole === 'student') nextRole = 'faculty';
-    else if (currentRole === 'faculty') nextRole = 'admin';
-    else nextRole = 'student';
-    handleRoleChange(nextRole);
+    if (currentRole === 'student') {
+      setIsStaffModalOpen(true);
+    } else {
+      returnToStudentPortal();
+    }
+  };
+
+  const loginStudent = (studentData: Partial<UserProfile>) => {
+    const updatedUser: UserProfile = {
+      ...user,
+      ...studentData,
+      id: studentData.id || `stu-${studentData.mobileNumber?.slice(-4) || Date.now()}`,
+      isLoggedIn: true,
+      joinedAt: user.joinedAt || new Date().toISOString()
+    };
+    storage.loginStudent(updatedUser);
+    setUser(updatedUser);
+    setCurrentRole('student');
+    storage.saveRole('student');
+    setView('dashboard');
+  };
+
+  const logoutStudent = () => {
+    storage.logoutStudent();
+    setUser(prev => ({ ...prev, isLoggedIn: false }));
+    setCurrentRole('student');
+    storage.saveRole('student');
+    setView('dashboard');
+  };
+
+  const verifyStaffPinAndSwitch = (role: UserRole, pin: string): boolean => {
+    if (role === 'admin' && pin.trim() === '8707') {
+      setCurrentRole('admin');
+      storage.saveRole('admin');
+      setView('admin');
+      setIsStaffModalOpen(false);
+      return true;
+    }
+    if (role === 'faculty' && pin.trim() === '1234') {
+      setCurrentRole('faculty');
+      storage.saveRole('faculty');
+      setView('faculty');
+      setIsStaffModalOpen(false);
+      return true;
+    }
+    return false;
+  };
+
+  const returnToStudentPortal = () => {
+    setCurrentRole('student');
+    storage.saveRole('student');
+    setView('dashboard');
   };
 
   // Add Chapter Resource (Videos / PPTs by Uma Shukla)
@@ -441,15 +511,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addDoubtNote = (chapterId: string, topic: string, note: string) => {
+  const addDoubtNote = (
+    chapterId: string,
+    topic: string,
+    note: string,
+    options?: {
+      recipientRole?: 'faculty' | 'admin';
+      recipientId?: string;
+      recipientName?: string;
+      subjectId?: SubjectId;
+      subjectName?: string;
+      attachmentUrl?: string;
+      attachmentName?: string;
+    }
+  ) => {
     const ch = chapters.find(c => c.id === chapterId);
     const newDoubt: DoubtNote = {
       id: `doubt-${Date.now()}`,
-      studentName: user.name,
-      chapterId,
-      chapterTitle: ch ? ch.title : 'General Doubt',
+      studentId: user.id || `stu-${user.mobileNumber?.slice(-4) || 'guest'}`,
+      studentName: user.name || 'Student',
+      studentMobile: user.mobileNumber || '',
+      recipientRole: options?.recipientRole || 'admin',
+      recipientId: options?.recipientId,
+      recipientName: options?.recipientName || (options?.recipientRole === 'faculty' ? 'Faculty Mentor' : 'Uma Shukla (Director)'),
+      subjectId: options?.subjectId || ch?.subjectId,
+      subjectName: options?.subjectName,
+      chapterId: chapterId || 'general',
+      chapterTitle: ch ? ch.title : 'General Academic / Guidance Query',
       questionOrTopic: topic,
       noteText: note,
+      attachmentUrl: options?.attachmentUrl,
+      attachmentName: options?.attachmentName,
       createdAt: new Date().toISOString(),
       status: 'pending'
     };
@@ -457,18 +549,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDoubts(updated);
   };
 
-  const replyToDoubtNote = (doubtId: string, replyText: string) => {
-    const item = doubts.find(d => d.id === doubtId);
-    if (item) {
-      const updated = storage.updateDoubt({
-        ...item,
-        mentorReply: replyText,
-        repliedAt: new Date().toISOString(),
-        repliedBy: 'Uma Shukla (Director)',
-        status: 'resolved'
-      });
-      setDoubts(updated);
-    }
+  const replyToDoubtNote = (doubtId: string, replyText: string, repliedBy?: string) => {
+    const updated = storage.replyDoubt(
+      doubtId,
+      replyText,
+      repliedBy || (currentRole === 'admin' ? 'Uma Shukla (Director)' : 'Faculty Mentor')
+    );
+    setDoubts(updated);
   };
 
   const toggleDoubtStatus = (id: string) => {
@@ -890,6 +977,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentRole,
         setCurrentRole,
         toggleRole,
+        isStaffModalOpen,
+        setIsStaffModalOpen,
+        loginStudent,
+        logoutStudent,
+        verifyStaffPinAndSwitch,
+        returnToStudentPortal,
         selectedSubjectId,
         setSelectedSubjectId,
         selectedChapterId,

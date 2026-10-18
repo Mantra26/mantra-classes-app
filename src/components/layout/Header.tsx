@@ -11,7 +11,10 @@ import {
   ShieldCheck,
   UserCheck,
   GraduationCap,
-  Award
+  Award,
+  Lock,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -26,13 +29,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
     openPaymentModal,
     resetAppDemoData,
     currentRole,
-    setCurrentRole,
     activeGrade,
     setActiveGrade,
     activeBoard,
     setActiveBoard,
     activeFacultyMember,
-    pendingApprovalsCount
+    pendingApprovalsCount,
+    setIsStaffModalOpen,
+    logoutStudent,
+    returnToStudentPortal
   } = useApp();
 
   const gradeLabel = (activeGrade === '11' || activeGrade === '12') ? `Class ${activeGrade} Commerce` : `Grade ${activeGrade}`;
@@ -135,36 +140,62 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             </select>
           </div>
 
-          {/* 3-WAY ROLE SELECTOR DROPDOWN */}
-          <div className="relative">
-            <select
-              value={currentRole}
-              onChange={e => {
-                const nextRole = e.target.value as any;
-                setCurrentRole(nextRole);
-                if (nextRole === 'admin') setView('admin');
-                else if (nextRole === 'faculty') setView('faculty');
-                else setView('dashboard');
-              }}
-              className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer border transition-all shadow-xs ${
-                currentRole === 'admin'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold ring-2 ring-amber-400/40'
-                  : currentRole === 'faculty'
-                  ? 'bg-purple-600 text-white border-purple-500 font-extrabold ring-2 ring-purple-400/30'
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-              }`}
-            >
-              <option value="student" className="bg-white text-slate-900">
-                🎓 Student View ({user.name})
-              </option>
-              <option value="faculty" className="bg-white text-slate-900">
-                🧑‍🏫 Faculty Portal ({activeFacultyMember?.name || 'Faculty'})
-              </option>
-              <option value="admin" className="bg-white text-slate-900">
-                👩‍🏫 Admin: Uma Shukla (Director) {pendingApprovalsCount > 0 ? `(${pendingApprovalsCount} Action)` : ''}
-              </option>
-            </select>
-          </div>
+          {/* ROLE ACCESS CONTROLS (RESTRICTED) */}
+          {currentRole === 'student' ? (
+            <div className="flex items-center space-x-2">
+              <div className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold">
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{user.name}</span>
+                {user.mobileNumber && (
+                  <span className="text-[10px] text-indigo-500 font-mono">({user.mobileNumber})</span>
+                )}
+              </div>
+
+              {/* Staff Portal PIN Trigger */}
+              <button
+                onClick={() => setIsStaffModalOpen(true)}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all border border-slate-200"
+                title="Faculty & Admin PIN Access"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden sm:inline">Staff Access</span>
+              </button>
+
+              {/* Logout Student */}
+              <button
+                onClick={logoutStudent}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Logout Student Session"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <span
+                className={`text-xs font-extrabold px-3 py-1.5 rounded-xl border flex items-center space-x-1.5 ${
+                  currentRole === 'admin'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 ring-2 ring-amber-400/40'
+                    : 'bg-purple-600 text-white border-purple-500 ring-2 ring-purple-400/30'
+                }`}
+              >
+                <span>{currentRole === 'admin' ? '👩‍🏫 Admin: Uma Shukla (Director)' : `🧑‍🏫 ${activeFacultyMember?.name || 'Faculty'}`}</span>
+                {pendingApprovalsCount > 0 && currentRole === 'admin' && (
+                  <span className="px-1.5 py-0.2 bg-slate-950 text-white text-[9px] rounded-full">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </span>
+
+              <button
+                onClick={returnToStudentPortal}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Exit to Student View</span>
+              </button>
+            </div>
+          )}
 
           {/* Student Stats (shown in student view) */}
           {currentRole === 'student' && (

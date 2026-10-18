@@ -1,17 +1,40 @@
 import { UserProfile, TestAttempt, Bookmark, DoubtNote } from '../types';
 
 export const DEFAULT_USER: UserProfile = {
-  id: 'student-aarav-7',
-  name: 'Aarav Sharma',
+  id: '',
+  name: '',
+  mobileNumber: '',
+  isLoggedIn: false,
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
   grade: 'Class 7-A (ICSE Board)',
+  gradeLevel: '7',
   schoolName: "St. Xavier's Boys' Academy",
+  board: 'ICSE',
+  targetPercentage: 95,
+  isProMember: false,
+  streakDays: 1,
+  totalTestsTaken: 0,
+  averageScorePercentage: 0,
+  coins: 50
+};
+
+export const DEMO_STUDENT: UserProfile = {
+  id: 'stu-9876543210',
+  name: 'Aarav Sharma',
+  mobileNumber: '9876543210',
+  isLoggedIn: true,
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  grade: 'Class 7-A (ICSE Board)',
+  gradeLevel: '7',
+  schoolName: "St. Xavier's Boys' Academy",
+  board: 'ICSE',
   targetPercentage: 95,
   isProMember: false,
   streakDays: 4,
   totalTestsTaken: 3,
   averageScorePercentage: 85.1,
-  coins: 140
+  coins: 140,
+  joinedAt: '2026-10-01'
 };
 
 export const INITIAL_TEST_ATTEMPTS: TestAttempt[] = [

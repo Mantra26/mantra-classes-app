@@ -127,11 +127,20 @@ export interface Question {
   explanation: string;
 }
 
+export interface AnswerAttachment {
+  name: string;
+  type: 'image' | 'pdf';
+  dataUrl: string;
+  sizeBytes?: number;
+  uploadedAt?: string;
+}
+
 export interface UserAnswer {
   questionId: string;
   userMcqIndex?: number;
   userBoolean?: boolean;
   userText?: string;
+  uploadedAttachment?: AnswerAttachment;
   isCorrect?: boolean;
   marksAwarded?: number;
   timeSpentSeconds: number;
@@ -193,7 +202,14 @@ export interface Bookmark {
 
 export interface DoubtNote {
   id: string;
+  studentId?: string;
   studentName?: string;
+  studentMobile?: string;
+  recipientRole?: 'faculty' | 'admin';
+  recipientId?: string;
+  recipientName?: string;
+  subjectId?: SubjectId;
+  subjectName?: string;
   chapterId: string;
   chapterTitle: string;
   questionOrTopic: string;
@@ -203,13 +219,18 @@ export interface DoubtNote {
   mentorReply?: string;
   repliedAt?: string;
   repliedBy?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export interface UserProfile {
   id: string;
   name: string;
+  mobileNumber?: string;
+  isLoggedIn?: boolean;
   avatar: string;
   grade: string;
+  gradeLevel?: GradeLevel;
   schoolName: string;
   board?: EducationBoard;
   targetPercentage: number;
@@ -219,6 +240,7 @@ export interface UserProfile {
   totalTestsTaken: number;
   averageScorePercentage: number;
   coins: number;
+  joinedAt?: string;
 }
 
 export interface PaymentTransaction {
@@ -262,11 +284,13 @@ export interface StudentTestSubmission {
   testTitle: string;
   studentId: string;
   studentName: string;
+  studentMobile?: string;
   studentGrade: GradeLevel;
   subjectId: SubjectId;
   submittedAt: string;
   durationSpentMinutes: number;
   answers: Record<string, UserAnswer>;
+  uploadedSheets?: AnswerAttachment[];
   status: 'submitted' | 'evaluated';
   autoScore: number;
   manualScore?: number;

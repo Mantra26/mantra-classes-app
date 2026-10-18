@@ -9,7 +9,11 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
-  Lightbulb
+  Lightbulb,
+  Camera,
+  X,
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 
 interface QuestionRendererProps {
@@ -32,6 +36,41 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   const { bookmarks, toggleBookmark } = useApp();
   const isBookmarked = bookmarks.some(b => b.questionId === question.id);
   const [showMantraHint, setShowMantraHint] = useState(false);
+  const [zoomAttachment, setZoomAttachment] = useState<any | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File exceeds 5MB limit. Please upload a smaller photo.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onAnswerChange({
+          questionId: question.id,
+          uploadedAttachment: {
+            name: file.name,
+            type: file.type.includes('pdf') ? 'pdf' : 'image',
+            dataUrl: reader.result,
+            sizeBytes: file.size,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAttachment = () => {
+    onAnswerChange({
+      questionId: question.id,
+      uploadedAttachment: undefined
+    });
+  };
 
   const handleMcqSelect = (idx: number) => {
     onAnswerChange({
@@ -275,6 +314,69 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                 </ul>
               </div>
             )}
+
+            {/* Handwritten Answer Sheet Upload for Subjective Questions */}
+            <div className="pt-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                Upload Handwritten Answer Sheet (Photo / PDF):
+              </label>
+
+              {userAnswer?.uploadedAttachment ? (
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    {userAnswer.uploadedAttachment.type === 'image' ? (
+                      <img
+                        src={userAnswer.uploadedAttachment.dataUrl}
+                        alt="Uploaded answer"
+                        className="w-12 h-12 object-cover rounded-xl border border-indigo-200 shrink-0 cursor-pointer"
+                        onClick={() => setZoomAttachment(userAnswer.uploadedAttachment)}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
+                        PDF
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-800 truncate">
+                        {userAnswer.uploadedAttachment.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setZoomAttachment(userAnswer.uploadedAttachment)}
+                        className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>View Solved Sheet</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRemoveAttachment}
+                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 transition-colors"
+                    title="Remove uploaded answer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-between p-3.5 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50/60 hover:bg-indigo-50/30 cursor-pointer transition-all">
+                  <div className="flex items-center space-x-2 text-indigo-600 font-bold text-xs">
+                    <Camera className="w-4 h-4 text-indigo-600" />
+                    <span>📸 Snap Photo / Upload Solved Answer Sheet</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">JPG, PNG, PDF</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -308,6 +410,39 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
           </div>
           <div className="whitespace-pre-line leading-relaxed font-mono text-[11px] bg-white p-3 rounded-xl border border-indigo-100 text-slate-800">
             {question.explanation}
+          </div>
+        </div>
+      )}
+
+      {/* Answer Sheet Zoom Modal */}
+      {zoomAttachment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold">{zoomAttachment.name}</span>
+              <button
+                type="button"
+                onClick={() => setZoomAttachment(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center bg-slate-100 max-h-[80vh]">
+              {zoomAttachment.type === 'image' ? (
+                <img
+                  src={zoomAttachment.dataUrl}
+                  alt="Enlarged handwritten sheet"
+                  className="max-h-[75vh] object-contain rounded-xl shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={zoomAttachment.dataUrl}
+                  title="PDF Sheet Preview"
+                  className="w-full h-[70vh] rounded-xl"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

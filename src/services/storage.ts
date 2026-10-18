@@ -22,6 +22,7 @@ import { ICSE_QUESTION_BANK } from '../data/questionBank';
 const STORAGE_KEYS = {
   USER: 'mantra_user_profile',
   ROLE: 'mantra_user_role',
+  REGISTERED_STUDENTS: 'mantra_registered_students',
   ACTIVE_GRADE: 'mantra_active_grade',
   ACTIVE_BOARD: 'mantra_active_board',
   ATTEMPTS: 'mantra_test_attempts',
@@ -297,7 +298,14 @@ export const storage = {
   getUser(): UserProfile {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.USER);
-      return data ? JSON.parse(data) : DEFAULT_USER;
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed.mobileNumber && parsed.name) {
+          return { ...parsed, isLoggedIn: parsed.isLoggedIn ?? true };
+        }
+        return parsed;
+      }
+      return DEFAULT_USER;
     } catch {
       return DEFAULT_USER;
     }
@@ -305,6 +313,35 @@ export const storage = {
 
   saveUser(user: UserProfile): void {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  },
+
+  getRegisteredStudents(): UserProfile[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.REGISTERED_STUDENTS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  loginStudent(student: UserProfile): void {
+    const userToSave = { ...student, isLoggedIn: true };
+    this.saveUser(userToSave);
+    this.saveRole('student');
+    const students = this.getRegisteredStudents();
+    const existingIdx = students.findIndex(s => s.mobileNumber === student.mobileNumber);
+    if (existingIdx >= 0) {
+      students[existingIdx] = userToSave;
+    } else {
+      students.push(userToSave);
+    }
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_STUDENTS, JSON.stringify(students));
+  },
+
+  logoutStudent(): void {
+    const current = this.getUser();
+    this.saveUser({ ...current, isLoggedIn: false });
+    this.saveRole('student');
   },
 
   getChapters(): Chapter[] {
@@ -428,6 +465,24 @@ export const storage = {
   deleteDoubt(id: string): DoubtNote[] {
     const list = this.getDoubts();
     const updated = list.filter(d => d.id !== id);
+    localStorage.setItem(STORAGE_KEYS.DOUBTS, JSON.stringify(updated));
+    return updated;
+  },
+
+  replyDoubt(id: string, reply: string, repliedBy: string): DoubtNote[] {
+    const list = this.getDoubts();
+    const updated = list.map(d => {
+      if (d.id === id) {
+        return {
+          ...d,
+          mentorReply: reply,
+          repliedAt: new Date().toISOString(),
+          repliedBy,
+          status: 'resolved' as const
+        };
+      }
+      return d;
+    });
     localStorage.setItem(STORAGE_KEYS.DOUBTS, JSON.stringify(updated));
     return updated;
   },

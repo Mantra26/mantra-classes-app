@@ -19,6 +19,8 @@ import { VideoPlayerModal } from './components/chapters/VideoPlayerModal';
 import { AssignedTestsView } from './components/test/AssignedTestsView';
 import { FacultyTestRunnerModal } from './components/test/FacultyTestRunnerModal';
 import { FacultyPortal } from './components/faculty/FacultyPortal';
+import { StudentAuthModal } from './components/auth/StudentAuthModal';
+import { StaffPasskeyModal } from './components/auth/StaffPasskeyModal';
 
 export const AppContent: React.FC = () => {
   const { view, activeTest, currentRole } = useApp();
@@ -51,6 +53,8 @@ export const AppContent: React.FC = () => {
       </div>
 
       {/* Global Modals & Overlays */}
+      <StudentAuthModal />
+      <StaffPasskeyModal />
       <ScorecardModal />
       <UpiPaymentModal />
       <GraphicalLabsModal />

@@ -11,7 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
-  Flag
+  Flag,
+  Camera,
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 
 export const FacultyTestRunnerModal: React.FC = () => {
@@ -31,6 +34,33 @@ export const FacultyTestRunnerModal: React.FC = () => {
   const [remainingSeconds, setRemainingSeconds] = useState(activeFacultyTest.durationMinutes * 60);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [zoomAttachment, setZoomAttachment] = useState<any | null>(null);
+
+  const handleFileUpload = (questionId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File exceeds 5MB limit. Please upload a smaller photo.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        handleAnswerChange(questionId, {
+          uploadedAttachment: {
+            name: file.name,
+            type: file.type.includes('pdf') ? 'pdf' : 'image',
+            dataUrl: reader.result,
+            sizeBytes: file.size,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Timer countdown
   useEffect(() => {
@@ -117,17 +147,23 @@ export const FacultyTestRunnerModal: React.FC = () => {
 
     const durationSpent = Math.max(1, Math.round((activeFacultyTest.durationMinutes * 60 - remainingSeconds) / 60));
 
+    const uploadedSheets = Object.values(answers)
+      .map(a => a.uploadedAttachment)
+      .filter((att): att is NonNullable<typeof att> => Boolean(att));
+
     const submission: StudentTestSubmission = {
       id: `sub-${Date.now()}`,
       testPaperId: activeFacultyTest.id,
       testTitle: activeFacultyTest.title,
-      studentId: user.id,
-      studentName: user.name,
-      studentGrade: user.grade.replace('Grade ', '') as any || '7',
+      studentId: user.id || `stu-${user.mobileNumber?.slice(-4) || 'guest'}`,
+      studentName: user.name || 'Student',
+      studentMobile: user.mobileNumber,
+      studentGrade: (user.gradeLevel || '7') as any,
       subjectId: activeFacultyTest.subjectId,
       submittedAt: new Date().toISOString(),
       durationSpentMinutes: durationSpent,
       answers,
+      uploadedSheets,
       status: 'submitted',
       autoScore,
       totalMarks: activeFacultyTest.totalMarks
@@ -338,6 +374,69 @@ export const FacultyTestRunnerModal: React.FC = () => {
                         </ul>
                       </div>
                     )}
+
+                    {/* Upload Handwritten Solution / Answer Sheet */}
+                    <div className="pt-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Upload Solved Sheet / Photo of Work (Optional):
+                      </label>
+
+                      {answers[currentQ.id]?.uploadedAttachment ? (
+                        <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200">
+                          <div className="flex items-center space-x-3 min-w-0">
+                            {answers[currentQ.id].uploadedAttachment!.type === 'image' ? (
+                              <img
+                                src={answers[currentQ.id].uploadedAttachment!.dataUrl}
+                                alt="Solved sheet"
+                                className="w-12 h-12 object-cover rounded-xl border border-indigo-200 shrink-0 cursor-pointer"
+                                onClick={() => setZoomAttachment(answers[currentQ.id].uploadedAttachment)}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-xl bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
+                                PDF
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-slate-800 truncate">
+                                {answers[currentQ.id].uploadedAttachment!.name}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setZoomAttachment(answers[currentQ.id].uploadedAttachment)}
+                                className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>View Solved Sheet</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAnswerChange(currentQ.id, { uploadedAttachment: undefined })}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 transition-colors"
+                            title="Remove uploaded answer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex items-center justify-between p-3 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50/60 hover:bg-indigo-50/30 cursor-pointer transition-all">
+                          <div className="flex items-center space-x-2 text-indigo-600 font-bold text-xs">
+                            <Camera className="w-4 h-4" />
+                            <span>📸 Snap Photo / Upload Solved Sheet</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400">JPG, PNG, PDF</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            capture="environment"
+                            onChange={e => handleFileUpload(currentQ.id, e)}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -447,6 +546,39 @@ export const FacultyTestRunnerModal: React.FC = () => {
               >
                 <span>Confirm Submit</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Answer Sheet Zoom Modal */}
+      {zoomAttachment && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-5 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold">{zoomAttachment.name}</span>
+              <button
+                type="button"
+                onClick={() => setZoomAttachment(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center bg-slate-100 max-h-[80vh]">
+              {zoomAttachment.type === 'image' ? (
+                <img
+                  src={zoomAttachment.dataUrl}
+                  alt="Enlarged handwritten sheet"
+                  className="max-h-[75vh] object-contain rounded-xl shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={zoomAttachment.dataUrl}
+                  title="PDF Sheet Preview"
+                  className="w-full h-[70vh] rounded-xl"
+                />
+              )}
             </div>
           </div>
         </div>
