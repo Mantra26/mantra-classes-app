@@ -194,3 +194,62 @@ export const INITIAL_DOUBTS: DoubtNote[] = [
     status: 'pending'
   }
 ];
+
+export const INITIAL_REGISTERED_STUDENTS: UserProfile[] = [
+  DEMO_STUDENT,
+  {
+    id: 'stu-9871122334',
+    name: 'Ishaan Verma',
+    mobileNumber: '9871122334',
+    isLoggedIn: false,
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+    grade: 'Grade 7 (ICSE)',
+    gradeLevel: '7',
+    board: 'ICSE',
+    schoolName: "Bishop Cotton Boys' School",
+    targetPercentage: 92,
+    isProMember: true,
+    streakDays: 5,
+    totalTestsTaken: 4,
+    averageScorePercentage: 78.5,
+    coins: 90,
+    joinedAt: '2026-10-05T10:30:00.000Z'
+  },
+  {
+    id: 'stu-9810055443',
+    name: 'Rohan Mehra',
+    mobileNumber: '9810055443',
+    isLoggedIn: false,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+    grade: 'Class 12 (CBSE Commerce)',
+    gradeLevel: '12',
+    board: 'CBSE',
+    schoolName: "Delhi Public School, R.K. Puram",
+    targetPercentage: 96,
+    isProMember: true,
+    streakDays: 8,
+    totalTestsTaken: 6,
+    averageScorePercentage: 91.0,
+    coins: 210,
+    joinedAt: '2026-10-08T14:15:00.000Z'
+  },
+  {
+    id: 'stu-9822334455',
+    name: 'Diya Patel',
+    mobileNumber: '9822334455',
+    isLoggedIn: false,
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+    grade: 'Grade 5 (ICSE)',
+    gradeLevel: '5',
+    board: 'ICSE',
+    schoolName: "Cathedral & John Connon School",
+    targetPercentage: 94,
+    isProMember: false,
+    streakDays: 2,
+    totalTestsTaken: 2,
+    averageScorePercentage: 88.0,
+    coins: 60,
+    joinedAt: '2026-10-12T16:00:00.000Z'
+  }
+];
+

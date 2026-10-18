@@ -15,7 +15,7 @@ import {
   ApprovalStatus,
   EducationBoard
 } from '../types';
-import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS } from '../data/defaultUser';
+import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS, INITIAL_REGISTERED_STUDENTS } from '../data/defaultUser';
 import { ICSE_CHAPTERS } from '../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../data/questionBank';
 
@@ -23,6 +23,8 @@ const STORAGE_KEYS = {
   USER: 'mantra_user_profile',
   ROLE: 'mantra_user_role',
   REGISTERED_STUDENTS: 'mantra_registered_students',
+  ADMIN_PIN: 'mantra_admin_pin',
+  FACULTY_PIN: 'mantra_faculty_pin',
   ACTIVE_GRADE: 'mantra_active_grade',
   ACTIVE_BOARD: 'mantra_active_board',
   ATTEMPTS: 'mantra_test_attempts',
@@ -318,30 +320,73 @@ export const storage = {
   getRegisteredStudents(): UserProfile[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.REGISTERED_STUDENTS);
-      return data ? JSON.parse(data) : [];
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // Seed with initial realistic students if storage is empty
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_STUDENTS, JSON.stringify(INITIAL_REGISTERED_STUDENTS));
+      return INITIAL_REGISTERED_STUDENTS;
     } catch {
-      return [];
+      return INITIAL_REGISTERED_STUDENTS;
     }
+  },
+
+  saveRegisteredStudent(student: UserProfile): UserProfile[] {
+    const list = this.getRegisteredStudents();
+    const existingIdx = list.findIndex(s => s.mobileNumber === student.mobileNumber || (s.id && s.id === student.id));
+    let updated: UserProfile[];
+    if (existingIdx >= 0) {
+      updated = [...list];
+      updated[existingIdx] = { ...updated[existingIdx], ...student };
+    } else {
+      updated = [student, ...list];
+    }
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_STUDENTS, JSON.stringify(updated));
+    return updated;
   },
 
   loginStudent(student: UserProfile): void {
     const userToSave = { ...student, isLoggedIn: true };
     this.saveUser(userToSave);
     this.saveRole('student');
-    const students = this.getRegisteredStudents();
-    const existingIdx = students.findIndex(s => s.mobileNumber === student.mobileNumber);
-    if (existingIdx >= 0) {
-      students[existingIdx] = userToSave;
-    } else {
-      students.push(userToSave);
-    }
-    localStorage.setItem(STORAGE_KEYS.REGISTERED_STUDENTS, JSON.stringify(students));
+    this.saveRegisteredStudent(userToSave);
   },
 
   logoutStudent(): void {
     const current = this.getUser();
     this.saveUser({ ...current, isLoggedIn: false });
     this.saveRole('student');
+  },
+
+  getAdminPin(): string {
+    try {
+      const pin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN);
+      return pin && pin.trim().length >= 4 ? pin.trim() : '8707';
+    } catch {
+      return '8707';
+    }
+  },
+
+  saveAdminPin(pin: string): void {
+    if (pin && pin.trim().length >= 4) {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, pin.trim());
+    }
+  },
+
+  getFacultyPin(): string {
+    try {
+      const pin = localStorage.getItem(STORAGE_KEYS.FACULTY_PIN);
+      return pin && pin.trim().length >= 4 ? pin.trim() : '1234';
+    } catch {
+      return '1234';
+    }
+  },
+
+  saveFacultyPin(pin: string): void {
+    if (pin && pin.trim().length >= 4) {
+      localStorage.setItem(STORAGE_KEYS.FACULTY_PIN, pin.trim());
+    }
   },
 
   getChapters(): Chapter[] {

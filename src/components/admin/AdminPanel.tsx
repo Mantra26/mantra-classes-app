@@ -25,7 +25,15 @@ import {
   FileText,
   ClipboardCheck,
   UserCheck,
-  Play
+  Play,
+  KeyRound,
+  ShieldCheck,
+  Users,
+  Phone,
+  ExternalLink,
+  EyeOff,
+  Lock,
+  Search
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -52,7 +60,12 @@ export const AdminPanel: React.FC = () => {
     rejectTestPaper,
     approveResource,
     rejectResource,
-    pendingApprovalsCount
+    pendingApprovalsCount,
+    adminPin,
+    updateAdminPin,
+    facultyPin,
+    updateFacultyPin,
+    registeredStudents
   } = useApp();
 
   // Modal states
@@ -64,6 +77,23 @@ export const AdminPanel: React.FC = () => {
   const [previewTest, setPreviewTest] = useState<FacultyTestPaper | null>(null);
   const [previewSheetModal, setPreviewSheetModal] = useState<any | null>(null);
   const [successToast, setSuccessToast] = useState('');
+
+  // Security & PIN Management State
+  const [newAdminPin, setNewAdminPin] = useState('');
+  const [confirmAdminPin, setConfirmAdminPin] = useState('');
+  const [showAdminPinForm, setShowAdminPinForm] = useState(false);
+  const [showCurrentPin, setShowCurrentPin] = useState(false);
+  const [adminPinError, setAdminPinError] = useState('');
+
+  const [newFacultyPin, setNewFacultyPin] = useState('');
+  const [confirmFacultyPin, setConfirmFacultyPin] = useState('');
+  const [showFacultyPinForm, setShowFacultyPinForm] = useState(false);
+  const [showFacultyCurrentPin, setShowFacultyCurrentPin] = useState(false);
+  const [facultyPinError, setFacultyPinError] = useState('');
+
+  // Student Directory State
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentBoardFilter, setStudentBoardFilter] = useState<'all' | 'ICSE' | 'CBSE'>('all');
 
   // Faculty form state
   const [facName, setFacName] = useState('');
@@ -398,6 +428,60 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setSuccessToast(''), 4000);
   };
 
+  // Handle Update Admin PIN
+  const handleUpdateAdminPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminPinError('');
+
+    const clean = newAdminPin.trim();
+    if (clean.length < 4) {
+      setAdminPinError('Admin PIN must be at least 4 digits');
+      return;
+    }
+    if (clean !== confirmAdminPin.trim()) {
+      setAdminPinError('PINs do not match. Please re-enter.');
+      return;
+    }
+
+    const ok = updateAdminPin(clean);
+    if (ok) {
+      setSuccessToast('Director Admin PIN updated successfully! The new PIN is now active.');
+      setNewAdminPin('');
+      setConfirmAdminPin('');
+      setShowAdminPinForm(false);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } else {
+      setAdminPinError('Failed to update PIN. Please enter a valid PIN.');
+    }
+  };
+
+  // Handle Update Faculty PIN
+  const handleUpdateFacultyPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFacultyPinError('');
+
+    const clean = newFacultyPin.trim();
+    if (clean.length < 4) {
+      setFacultyPinError('Faculty PIN must be at least 4 digits');
+      return;
+    }
+    if (clean !== confirmFacultyPin.trim()) {
+      setFacultyPinError('PINs do not match. Please re-enter.');
+      return;
+    }
+
+    const ok = updateFacultyPin(clean);
+    if (ok) {
+      setSuccessToast(`Faculty Authorization PIN updated successfully to ${clean}!`);
+      setNewFacultyPin('');
+      setConfirmFacultyPin('');
+      setShowFacultyPinForm(false);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } else {
+      setFacultyPinError('Failed to update Faculty PIN.');
+    }
+  };
+
   const pendingSubmissions = studentSubmissions.filter(s => s.status === 'submitted');
   const pendingTestPapers = facultyTests.filter(t => t.approvalStatus === 'pending_approval');
   const pendingResources: {
@@ -500,7 +584,17 @@ export const AdminPanel: React.FC = () => {
       </div>
 
       {/* Metrics Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl font-black text-slate-900">{registeredStudents.length}</div>
+            <div className="text-[11px] font-semibold text-slate-500">Enrolled Students</div>
+          </div>
+        </div>
+
         <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
             <ClipboardCheck className="w-5 h-5" />
@@ -551,7 +645,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* 6th Metric: Pending Approvals */}
+        {/* 7th Metric: Pending Approvals */}
         <div
           className={`p-4 rounded-2xl border shadow-xs flex items-center space-x-3 ${
             pendingApprovalsCount > 0
@@ -917,6 +1011,356 @@ export const AdminPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* ================= SECTION: STUDENT DIRECTORY & MOBILE REGISTRY ================= */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-bold text-slate-900">Enrolled Students & Mobile Directory</h3>
+                <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  {registeredStudents.length} Students Enrolled
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                View student mobile contact numbers, enrolled board & grade, school name, and academic test performance
+              </p>
+            </div>
+          </div>
+
+          {/* Search & Board Filter */}
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={e => setStudentSearch(e.target.value)}
+                placeholder="Search name or mobile..."
+                className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            <select
+              value={studentBoardFilter}
+              onChange={e => setStudentBoardFilter(e.target.value as any)}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white"
+            >
+              <option value="all">All Boards</option>
+              <option value="ICSE">ICSE</option>
+              <option value="CBSE">CBSE</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Students Cards Grid */}
+        {(() => {
+          const filteredStudents = registeredStudents.filter(stu => {
+            const matchesQuery =
+              !studentSearch ||
+              stu.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+              stu.mobileNumber?.includes(studentSearch);
+            const matchesBoard = studentBoardFilter === 'all' || stu.board === studentBoardFilter;
+            return matchesQuery && matchesBoard;
+          });
+
+          if (filteredStudents.length === 0) {
+            return (
+              <div className="py-8 text-center text-slate-500 text-xs">
+                No students match your search criteria.
+              </div>
+            );
+          }
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {filteredStudents.map(stu => (
+                <div
+                  key={stu.id || stu.mobileNumber}
+                  className="p-4 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all space-y-3 shadow-xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={stu.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}
+                        alt={stu.name}
+                        className="w-11 h-11 rounded-xl object-cover ring-2 ring-blue-500/20"
+                      />
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{stu.name}</h4>
+                        <div className="flex items-center space-x-1.5 mt-0.5">
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800">
+                            {stu.board || 'ICSE'}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-600">
+                            {stu.grade || `Grade ${stu.gradeLevel || '7'}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prominent Student Mobile & Contact Buttons */}
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Student Mobile
+                      </span>
+                      <span className="text-xs font-black text-slate-900 font-mono tracking-wide">
+                        📱 +91 {stu.mobileNumber || 'Not provided'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-1 border-t border-slate-100">
+                      {stu.mobileNumber ? (
+                        <>
+                          <a
+                            href={`tel:${stu.mobileNumber}`}
+                            className="flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition-colors"
+                          >
+                            <Phone className="w-3 h-3 text-emerald-600" />
+                            <span>Call</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/91${stu.mobileNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-[11px] font-bold shadow-xs transition-colors"
+                          >
+                            <span>WhatsApp</span>
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">No mobile recorded</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Academic Metrics */}
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-white border border-slate-100">
+                      <div className="text-[10px] font-bold text-slate-400">Tests Attempted</div>
+                      <div className="font-extrabold text-slate-800">{stu.totalTestsTaken || 0}</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-slate-100">
+                      <div className="text-[10px] font-bold text-slate-400">Avg. Score</div>
+                      <div className="font-extrabold text-indigo-600">{stu.averageScorePercentage ? `${stu.averageScorePercentage}%` : 'N/A'}</div>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span className="truncate max-w-[180px]">{stu.schoolName || "Mantra Classes"}</span>
+                    <span>Joined: {stu.joinedAt ? new Date(stu.joinedAt).toLocaleDateString() : 'Active'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ================= SECTION: DIRECTOR SECURITY & PIN ACCESS CONTROL DESK ================= */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-3xl p-5 sm:p-6 text-white shadow-xl space-y-5 border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30 flex items-center justify-center">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-bold text-white">Director Security & Passkey Management</h3>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                  Staff Protection
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                Manage authorization PINs. Students are strictly restricted to the Student Portal and cannot access educator workspaces without this PIN.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: Director Admin PIN */}
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-black uppercase text-amber-400">Director (Admin) Access PIN</span>
+                <p className="text-[11px] text-slate-300">Controls access to Director Uma Shukla's full admin panel</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="font-mono text-sm font-bold tracking-widest px-2.5 py-1 rounded-lg bg-black/40 border border-white/10">
+                  {showCurrentPin ? adminPin : '••••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPin(!showCurrentPin)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 transition-colors"
+                  title={showCurrentPin ? 'Hide PIN' : 'Reveal PIN'}
+                >
+                  {showCurrentPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {!showAdminPinForm ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAdminPinForm(true);
+                  setAdminPinError('');
+                  setNewAdminPin('');
+                  setConfirmAdminPin('');
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition-all flex items-center justify-center space-x-1.5"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Reset Director PIN</span>
+              </button>
+            ) : (
+              <form onSubmit={handleUpdateAdminPin} className="space-y-2.5 pt-2 border-t border-white/10">
+                {adminPinError && (
+                  <div className="p-2 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-300 text-xs font-semibold">
+                    {adminPinError}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-300 mb-1">New PIN (4-8 digits)</label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={8}
+                      value={newAdminPin}
+                      onChange={e => setNewAdminPin(e.target.value)}
+                      placeholder="New PIN"
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-300 mb-1">Confirm New PIN</label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={8}
+                      value={confirmAdminPin}
+                      onChange={e => setConfirmAdminPin(e.target.value)}
+                      placeholder="Confirm PIN"
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPinForm(false)}
+                    className="w-1/3 py-1.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-slate-300 font-bold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-sm transition-all"
+                  >
+                    Save New Director PIN
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Card 2: Faculty Member PIN */}
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-black uppercase text-purple-400">Faculty Authorization PIN</span>
+                <p className="text-[11px] text-slate-300">PIN shared with verified teachers to enter Faculty workspace</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="font-mono text-sm font-bold tracking-widest px-2.5 py-1 rounded-lg bg-black/40 border border-white/10">
+                  {showFacultyCurrentPin ? facultyPin : '••••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowFacultyCurrentPin(!showFacultyCurrentPin)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 transition-colors"
+                  title={showFacultyCurrentPin ? 'Hide PIN' : 'Reveal PIN'}
+                >
+                  {showFacultyCurrentPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {!showFacultyPinForm ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFacultyPinForm(true);
+                  setFacultyPinError('');
+                  setNewFacultyPin('');
+                  setConfirmFacultyPin('');
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center space-x-1.5"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Reset Faculty PIN</span>
+              </button>
+            ) : (
+              <form onSubmit={handleUpdateFacultyPin} className="space-y-2.5 pt-2 border-t border-white/10">
+                {facultyPinError && (
+                  <div className="p-2 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-300 text-xs font-semibold">
+                    {facultyPinError}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-300 mb-1">New PIN (4-8 digits)</label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={8}
+                      value={newFacultyPin}
+                      onChange={e => setNewFacultyPin(e.target.value)}
+                      placeholder="New PIN"
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-300 mb-1">Confirm New PIN</label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={8}
+                      value={confirmFacultyPin}
+                      onChange={e => setConfirmFacultyPin(e.target.value)}
+                      placeholder="Confirm PIN"
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowFacultyPinForm(false)}
+                    className="w-1/3 py-1.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-slate-300 font-bold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-sm transition-all"
+                  >
+                    Save Faculty PIN
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ================= SECTION 1: EVALUATIONS & GRADING DESK ================= */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -962,6 +1406,16 @@ export const AdminPanel: React.FC = () => {
                       <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
                         {sub.studentName}
                       </span>
+                      {sub.studentMobile && (
+                        <a
+                          href={`tel:${sub.studentMobile}`}
+                          className="inline-flex items-center space-x-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                          title="Call student"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          <span>{sub.studentMobile}</span>
+                        </a>
+                      )}
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700">
                         Grade {sub.studentGrade}
                       </span>
@@ -1375,9 +1829,21 @@ export const AdminPanel: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-white text-indigo-700 border border-slate-200">
-                        {d.studentName || 'Aarav Sharma'}
-                      </span>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-white text-indigo-700 border border-slate-200">
+                          {d.studentName || 'Aarav Sharma'}
+                        </span>
+                        {d.studentMobile && (
+                          <a
+                            href={`tel:${d.studentMobile}`}
+                            className="inline-flex items-center space-x-0.5 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                            title="Call student"
+                          >
+                            <Phone className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{d.studentMobile}</span>
+                          </a>
+                        )}
+                      </div>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                           isPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'

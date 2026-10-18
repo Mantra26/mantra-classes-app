@@ -17,7 +17,8 @@ import {
   ExternalLink,
   UserCheck,
   ShieldCheck,
-  Paperclip
+  Paperclip,
+  Phone
 } from 'lucide-react';
 
 export const DoubtsView: React.FC = () => {
@@ -373,9 +374,18 @@ export const DoubtsView: React.FC = () => {
                       {item.questionOrTopic}
                     </span>
                     {item.studentName && (
-                      <span className="text-[11px] text-slate-500">
-                        From: <strong className="text-slate-800">{item.studentName}</strong>
-                        {item.studentMobile ? ` (${item.studentMobile})` : ''}
+                      <span className="text-[11px] text-slate-500 flex items-center space-x-1.5">
+                        <span>From: <strong className="text-slate-800">{item.studentName}</strong></span>
+                        {item.studentMobile && (
+                          <a
+                            href={`tel:${item.studentMobile}`}
+                            className="inline-flex items-center space-x-0.5 px-2 py-0.2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 font-bold"
+                            title="Call student"
+                          >
+                            <Phone className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{item.studentMobile}</span>
+                          </a>
+                        )}
                       </span>
                     )}
                   </div>

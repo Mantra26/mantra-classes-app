@@ -32,11 +32,7 @@ export const StaffPasskeyModal: React.FC = () => {
 
     const success = verifyStaffPinAndSwitch(selectedRole, pin);
     if (!success) {
-      setErrorMsg(
-        selectedRole === 'admin'
-          ? 'Invalid Director Admin PIN. (Default Director PIN: 8707)'
-          : 'Invalid Faculty Authorization PIN. (Default Faculty PIN: 1234)'
-      );
+      setErrorMsg('Incorrect authorization PIN. Access denied.');
     }
   };
 
@@ -153,19 +149,9 @@ export const StaffPasskeyModal: React.FC = () => {
                 maxLength={8}
                 value={pin}
                 onChange={e => setPin(e.target.value)}
-                placeholder={selectedRole === 'admin' ? 'Enter Admin PIN (8707)' : 'Enter Faculty PIN (1234)'}
+                placeholder="Enter PIN"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300 font-mono tracking-widest text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 text-slate-900"
               />
-            </div>
-            <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400">
-              <span>{selectedRole === 'admin' ? 'Default Admin PIN: 8707' : 'Default Faculty PIN: 1234'}</span>
-              <button
-                type="button"
-                onClick={() => setPin(selectedRole === 'admin' ? '8707' : '1234')}
-                className="text-indigo-600 font-bold hover:underline"
-              >
-                Quick-Fill
-              </button>
             </div>
           </div>
 

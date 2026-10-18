@@ -83,6 +83,11 @@ interface AppContextType {
   logoutStudent: () => void;
   verifyStaffPinAndSwitch: (role: UserRole, pin: string) => boolean;
   returnToStudentPortal: () => void;
+  adminPin: string;
+  updateAdminPin: (newPin: string) => boolean;
+  facultyPin: string;
+  updateFacultyPin: (newPin: string) => boolean;
+  registeredStudents: UserProfile[];
 
   // Data & Models
   user: UserProfile;
@@ -202,6 +207,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [customPresets, setCustomPresets] = useState<CustomTestConfig[]>(() => storage.getCustomPresets());
   const [transactions, setTransactions] = useState<PaymentTransaction[]>(() => storage.getTransactions());
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [registeredStudents, setRegisteredStudents] = useState<UserProfile[]>(() => storage.getRegisteredStudents());
+  const [adminPin, setAdminPinState] = useState<string>(() => storage.getAdminPin());
+  const [facultyPin, setFacultyPinState] = useState<string>(() => storage.getFacultyPin());
+
+  const updateAdminPin = (newPin: string): boolean => {
+    if (!newPin || newPin.trim().length < 4) return false;
+    const clean = newPin.trim();
+    storage.saveAdminPin(clean);
+    setAdminPinState(clean);
+    return true;
+  };
+
+  const updateFacultyPin = (newPin: string): boolean => {
+    if (!newPin || newPin.trim().length < 4) return false;
+    const clean = newPin.trim();
+    storage.saveFacultyPin(clean);
+    setFacultyPinState(clean);
+    return true;
+  };
 
   // Multi-Grade, Board and Faculty Tests State
   const [activeGrade, setActiveGradeState] = useState<GradeLevel>(() => storage.getActiveGrade());
@@ -410,6 +434,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       joinedAt: user.joinedAt || new Date().toISOString()
     };
     storage.loginStudent(updatedUser);
+    setRegisteredStudents(storage.getRegisteredStudents());
     setUser(updatedUser);
     setCurrentRole('student');
     storage.saveRole('student');
@@ -425,14 +450,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyStaffPinAndSwitch = (role: UserRole, pin: string): boolean => {
-    if (role === 'admin' && pin.trim() === '8707') {
+    const inputPin = pin.trim();
+    const currentAdminPin = storage.getAdminPin();
+    const currentFacultyPin = storage.getFacultyPin();
+
+    if (role === 'admin' && inputPin === currentAdminPin) {
       setCurrentRole('admin');
       storage.saveRole('admin');
       setView('admin');
       setIsStaffModalOpen(false);
       return true;
     }
-    if (role === 'faculty' && pin.trim() === '1234') {
+    if (role === 'faculty' && inputPin === currentFacultyPin) {
       setCurrentRole('faculty');
       storage.saveRole('faculty');
       setView('faculty');
@@ -983,6 +1012,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logoutStudent,
         verifyStaffPinAndSwitch,
         returnToStudentPortal,
+        adminPin,
+        updateAdminPin,
+        facultyPin,
+        updateFacultyPin,
+        registeredStudents,
         selectedSubjectId,
         setSelectedSubjectId,
         selectedChapterId,
