@@ -1,5 +1,6 @@
 import { Subject, Chapter } from '../types';
 import { CBSE_COMMERCE_SUBJECTS, CBSE_COMMERCE_CHAPTERS } from './cbseCommerceCurriculum';
+import { NEW_SUBJECTS, NEW_SUBJECTS_CHAPTERS } from './newSubjectsCurriculum';
 
 export const ICSE_SUBJECTS: Subject[] = [
   {
@@ -99,6 +100,7 @@ export const ICSE_SUBJECTS: Subject[] = [
     grades: ['3', '4', '5', '6', '7'],
     boards: ['ICSE', 'CBSE']
   },
+  ...NEW_SUBJECTS
 ];
 
 export const ICSE_CHAPTERS: Chapter[] = [
@@ -1763,6 +1765,7 @@ export const ICSE_CHAPTERS: Chapter[] = [
       }
     ]
   },
-  ...CBSE_COMMERCE_CHAPTERS
+  ...CBSE_COMMERCE_CHAPTERS,
+  ...NEW_SUBJECTS_CHAPTERS
 ];
 

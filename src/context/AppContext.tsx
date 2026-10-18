@@ -186,6 +186,11 @@ interface AppContextType {
   rejectResource: (chapterId: string, resourceIdOrTitle: string, reason: string) => void;
   pendingApprovalsCount: number;
 
+  // Curriculum Management (Admin / Faculty)
+  updateChapter: (chapterId: string, updates: Partial<Chapter>) => void;
+  addChapter: (newChapter: Chapter) => void;
+  deleteChapter: (chapterId: string) => void;
+
   // Utilities
   resetAppDemoData: () => void;
   goToChapterDetail: (chapterId: string) => void;
@@ -403,6 +408,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const matchesBoard = !c.board || c.board === activeBoard || (activeBoard === 'ICSE' && !c.board);
       return matchesGrade && matchesBoard;
     });
+    // For admin, NOTHING is locked - full curriculum access
+    if (currentRole === 'admin') {
+      return matched.map(ch => ({ ...ch, isLocked: false }));
+    }
     // If student mode, hide pending or rejected resources
     if (currentRole === 'student') {
       return matched.map(ch => ({
@@ -493,6 +502,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteChapterResource = (chapterId: string, resourceTitle: string) => {
     const updated = storage.deleteChapterResource(chapterId, resourceTitle);
+    setChapters(updated);
+  };
+
+  // Chapter content editing & management by Admin / Faculty
+  const updateChapter = (chapterId: string, updates: Partial<Chapter>) => {
+    const updated = storage.updateChapter(chapterId, updates);
+    setChapters(updated);
+  };
+
+  const addChapter = (newChapter: Chapter) => {
+    const updated = storage.addChapter(newChapter);
+    setChapters(updated);
+  };
+
+  const deleteChapter = (chapterId: string) => {
+    const updated = storage.deleteChapter(chapterId);
     setChapters(updated);
   };
 
@@ -1245,6 +1270,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveResource,
         rejectResource,
         pendingApprovalsCount,
+        updateChapter,
+        addChapter,
+        deleteChapter,
         resetAppDemoData,
         goToChapterDetail,
       }}

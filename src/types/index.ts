@@ -31,7 +31,10 @@ export type SubjectId =
   | 'computers'
   | 'accountancy'
   | 'business_studies'
-  | 'economics';
+  | 'economics'
+  | 'sanskrit'
+  | 'social_studies'
+  | 'evs';
 
 export interface Subject {
   id: SubjectId;
@@ -60,7 +63,7 @@ export interface PptSlide {
     label: string;
     items: { term: string; explanation: string }[];
   };
-  examMantra: string;
+  examMantra?: string;
 }
 
 export type LabType = 'light_reflection' | 'cell_organelles' | 'fraction_visualizer' | 'chemical_equation';
@@ -102,6 +105,7 @@ export interface Chapter {
   resources: ChapterResource[];
   gradeLevel?: GradeLevel;
   board?: EducationBoard;
+  mindMapSummary?: string;
 }
 
 export interface Question {

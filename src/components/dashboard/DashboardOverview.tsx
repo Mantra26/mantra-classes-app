@@ -35,11 +35,12 @@ export const DashboardOverview: React.FC = () => {
     activeGrade,
     activeBoard,
     filteredSubjects,
-    openPaymentModal
+    openPaymentModal,
+    currentRole
   } = useApp();
 
-  const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
-  const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
+  const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
+  const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
 
   return (
     <div className="space-y-6">

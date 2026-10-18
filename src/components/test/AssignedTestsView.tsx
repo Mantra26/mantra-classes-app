@@ -27,11 +27,12 @@ export const AssignedTestsView: React.FC = () => {
     activeBoard,
     user,
     testAttempts,
-    openPaymentModal
+    openPaymentModal,
+    currentRole
   } = useApp();
 
-  const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
-  const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
+  const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
+  const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
 
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'evaluated'>('pending');
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);

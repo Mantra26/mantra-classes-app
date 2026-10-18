@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ICSE_SUBJECTS } from '../../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../../data/questionBank';
-import { ChapterResource, SubjectId, PptSlide, GradeLevel, FacultyTestPaper, StudentTestSubmission } from '../../types';
+import { ChapterResource, SubjectId, PptSlide, GradeLevel, FacultyTestPaper, StudentTestSubmission, Chapter } from '../../types';
 import { PptSlideViewerModal } from '../chapters/PptSlideViewerModal';
+import { ChapterEditModal } from '../chapters/ChapterEditModal';
 import {
   Video,
   FileSpreadsheet,
@@ -38,7 +39,9 @@ import {
   QrCode,
   Copy,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Unlock
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -46,6 +49,9 @@ export const AdminPanel: React.FC = () => {
     chapters,
     addChapterResource,
     deleteChapterResource,
+    updateChapter,
+    addChapter,
+    deleteChapter,
     doubts,
     replyToDoubtNote,
     toggleRole,
@@ -128,6 +134,56 @@ export const AdminPanel: React.FC = () => {
 
   // Selected filter
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<SubjectId | 'all'>('all');
+
+  // Curriculum Content Manager & Chapter Editor State
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+  const [showAddChapterModal, setShowAddChapterModal] = useState(false);
+  const [curriculumSubjectFilter, setCurriculumSubjectFilter] = useState<SubjectId | 'all'>('all');
+  const [curriculumGradeFilter, setCurriculumGradeFilter] = useState<GradeLevel | 'all'>('all');
+  const [curriculumBoardFilter, setCurriculumBoardFilter] = useState<'all' | 'ICSE' | 'CBSE' | 'IGCSE'>('all');
+  const [curriculumSearch, setCurriculumSearch] = useState('');
+
+  // Add New Chapter Form State
+  const [newChapSubjectId, setNewChapSubjectId] = useState<SubjectId>('sanskrit');
+  const [newChapGrade, setNewChapGrade] = useState<GradeLevel>('7');
+  const [newChapBoard, setNewChapBoard] = useState<'ICSE' | 'CBSE' | 'IGCSE'>('CBSE');
+  const [newChapNumber, setNewChapNumber] = useState<number>(1);
+  const [newChapTitle, setNewChapTitle] = useState('');
+  const [newChapSummary, setNewChapSummary] = useState('');
+
+  const handleCreateNewChapter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChapTitle.trim()) return;
+    const newCh: Chapter = {
+      id: `${newChapSubjectId}-custom-${Date.now()}`,
+      subjectId: newChapSubjectId,
+      gradeLevel: newChapGrade,
+      board: newChapBoard,
+      chapterNumber: Number(newChapNumber) || 1,
+      title: newChapTitle.trim(),
+      summary: newChapSummary.trim() || 'Curriculum unit created by Director Uma Shukla.',
+      keyConcepts: ['Core conceptual foundation and syllabus outline.'],
+      keyFormulasOrTerms: [],
+      resources: [],
+      isLocked: false
+    };
+    addChapter(newCh);
+    setNewChapTitle('');
+    setNewChapSummary('');
+    setShowAddChapterModal(false);
+    setSuccessToast(`New chapter "${newCh.title}" created successfully!`);
+    setTimeout(() => setSuccessToast(''), 3000);
+  };
+
+  const filteredCurriculumChapters = chapters.filter(c => {
+    const matchSub = curriculumSubjectFilter === 'all' || c.subjectId === curriculumSubjectFilter;
+    const matchGrade = curriculumGradeFilter === 'all' || c.gradeLevel === curriculumGradeFilter || (!c.gradeLevel && curriculumGradeFilter === '7');
+    const matchBoard = curriculumBoardFilter === 'all' || c.board === curriculumBoardFilter || (!c.board && curriculumBoardFilter === 'ICSE');
+    const matchSearch = !curriculumSearch.trim() ||
+      c.title.toLowerCase().includes(curriculumSearch.toLowerCase()) ||
+      c.summary.toLowerCase().includes(curriculumSearch.toLowerCase());
+    return matchSub && matchGrade && matchBoard && matchSearch;
+  });
 
   // Test Paper Creation Form State
   const [testGrade, setTestGrade] = useState<GradeLevel | 'all'>('7');
@@ -1978,6 +2034,177 @@ export const AdminPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* ================= SECTION: CURRICULUM & LESSON CONTENT MANAGER ================= */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                Full Curriculum Authority
+              </span>
+              <span className="text-xs text-slate-400">Director Uma Shukla</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+              Curriculum & Lesson Content Manager
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl mt-0.5">
+              Inspect all subjects (including Sanskrit, Social Studies, EVS, Science, Math & Commerce) and edit chapter summaries, core concepts, formulas, and lock status.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowAddChapterModal(true)}
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 shrink-0 self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add New Chapter</span>
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Board Filter */}
+          <div className="w-32">
+            <select
+              value={curriculumBoardFilter}
+              onChange={e => setCurriculumBoardFilter(e.target.value as any)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="all">All Boards</option>
+              <option value="ICSE">ICSE</option>
+              <option value="CBSE">CBSE</option>
+              <option value="IGCSE">Cambridge IGCSE</option>
+            </select>
+          </div>
+
+          {/* Subject Filter */}
+          <div className="flex-1 min-w-[200px]">
+            <select
+              value={curriculumSubjectFilter}
+              onChange={e => setCurriculumSubjectFilter(e.target.value as any)}
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="all">All Subjects ({ICSE_SUBJECTS.length})</option>
+              {ICSE_SUBJECTS.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Grade Filter */}
+          <div className="w-36">
+            <select
+              value={curriculumGradeFilter}
+              onChange={e => setCurriculumGradeFilter(e.target.value as any)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="all">All Grades</option>
+              {['2', '3', '4', '5', '6', '7', '11', '12'].map(g => (
+                <option key={g} value={g}>
+                  {g === '11' || g === '12' ? `Class ${g} Commerce` : `Grade ${g}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={curriculumSearch}
+              onChange={e => setCurriculumSearch(e.target.value)}
+              placeholder="Search chapter title or keyword..."
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Chapters Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto p-1">
+          {filteredCurriculumChapters.length === 0 ? (
+            <div className="col-span-full p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-500 text-xs font-medium">
+              No chapters match the selected filters.
+            </div>
+          ) : (
+            filteredCurriculumChapters.map(ch => {
+              const subject = ICSE_SUBJECTS.find(s => s.id === ch.subjectId);
+              const chapterQuestions = ICSE_QUESTION_BANK.filter(q => q.chapterId === ch.id);
+
+              return (
+                <div
+                  key={ch.id}
+                  className="p-5 rounded-3xl bg-slate-50/80 hover:bg-white border border-slate-200/90 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800">
+                        {subject?.name || ch.subjectId} • Ch {ch.chapterNumber}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                          ch.isLocked
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {ch.isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                        <span>{ch.isLocked ? 'Locked (Pro)' : 'Open Demo'}</span>
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                        {ch.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                        {ch.summary}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-white border border-slate-200/80 text-[11px] text-center">
+                      <div>
+                        <div className="font-bold text-slate-900">{ch.keyConcepts?.length || 0}</div>
+                        <div className="text-[10px] text-slate-400">Concepts</div>
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900">{ch.keyFormulasOrTerms?.length || 0}</div>
+                        <div className="text-[10px] text-slate-400">Rules/Terms</div>
+                      </div>
+                      <div>
+                        <div className="font-bold text-indigo-600">{chapterQuestions.length}</div>
+                        <div className="text-[10px] text-slate-400">Questions</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex items-center gap-2 border-t border-slate-100 mt-3">
+                    <button
+                      onClick={() => setEditingChapter(ch)}
+                      className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-xs transition-all active:scale-95"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Content</span>
+                    </button>
+
+                    <button
+                      onClick={() => goToChapterDetail(ch.id)}
+                      className="flex items-center justify-center space-x-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                      title="Inspect in Student Mode"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Inspect</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
       {/* ================= SECTION 3: COURSEWARE & DOUBTS DESK ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 cols): Published Chapter Resources Manager */}
@@ -2975,6 +3202,136 @@ export const AdminPanel: React.FC = () => {
                 />
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chapter Curriculum Editor Modal for Admin */}
+      <ChapterEditModal
+        isOpen={!!editingChapter}
+        chapter={editingChapter}
+        onClose={() => setEditingChapter(null)}
+        onSave={(chapterId, updates) => {
+          updateChapter(chapterId, updates);
+          setSuccessToast('Chapter curriculum content updated successfully!');
+          setTimeout(() => setSuccessToast(''), 3000);
+        }}
+      />
+
+      {/* Add New Chapter Modal */}
+      {showAddChapterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-400/30">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Create New Curriculum Chapter</h3>
+                  <p className="text-xs text-slate-300">Add a new unit under any board and subject</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddChapterModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewChapter} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Subject</label>
+                  <select
+                    value={newChapSubjectId}
+                    onChange={e => setNewChapSubjectId(e.target.value as any)}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {ICSE_SUBJECTS.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Board</label>
+                  <select
+                    value={newChapBoard}
+                    onChange={e => setNewChapBoard(e.target.value as any)}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ICSE">ICSE</option>
+                    <option value="CBSE">CBSE</option>
+                    <option value="IGCSE">Cambridge IGCSE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Grade</label>
+                  <select
+                    value={newChapGrade}
+                    onChange={e => setNewChapGrade(e.target.value as any)}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {['2', '3', '4', '5', '6', '7', '11', '12'].map(g => (
+                      <option key={g} value={g}>{g === '11' || g === '12' ? `Class ${g} Com` : `Grade ${g}`}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-700">Chapter Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newChapNumber}
+                    onChange={e => setNewChapNumber(parseInt(e.target.value) || 1)}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700">Chapter Title</label>
+                <input
+                  type="text"
+                  required
+                  value={newChapTitle}
+                  onChange={e => setNewChapTitle(e.target.value)}
+                  placeholder="e.g. Sanskrit Vyakaran Sandhi Prakaranam"
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700">Chapter Summary</label>
+                <textarea
+                  rows={3}
+                  value={newChapSummary}
+                  onChange={e => setNewChapSummary(e.target.value)}
+                  placeholder="Overview of topics and learning objectives covered..."
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddChapterModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md"
+                >
+                  Create & Save Chapter
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

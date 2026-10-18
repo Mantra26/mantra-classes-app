@@ -4,6 +4,7 @@ import { ICSE_SUBJECTS } from '../../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../../data/questionBank';
 import { ChapterResource } from '../../types';
 import { PptSlideViewerModal } from './PptSlideViewerModal';
+import { ChapterEditModal } from './ChapterEditModal';
 import {
   ChevronLeft,
   BookOpen,
@@ -19,7 +20,9 @@ import {
   ArrowRight,
   Presentation,
   Download,
-  X
+  X,
+  Edit3,
+  ShieldCheck
 } from 'lucide-react';
 
 export const ChapterDetailView: React.FC = () => {
@@ -35,12 +38,14 @@ export const ChapterDetailView: React.FC = () => {
     addDoubtNote,
     currentRole,
     activeGrade,
-    activeBoard
+    activeBoard,
+    updateChapter
   } = useApp();
 
   const [doubtText, setDoubtText] = useState('');
   const [doubtSubmitted, setDoubtSubmitted] = useState(false);
   const [activePptModal, setActivePptModal] = useState<ChapterResource | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const chapter = filteredChapters.find(c => c.id === selectedChapterId) || filteredChapters[0];
   const subject = ICSE_SUBJECTS.find(s => s.id === chapter?.subjectId);
@@ -72,13 +77,55 @@ export const ChapterDetailView: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
       {/* Top Back Navigation */}
-      <button
-        onClick={() => setView('subjects')}
-        className="flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        <span>Back to Subjects & Lessons</span>
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setView('subjects')}
+          className="flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Back to Subjects & Lessons</span>
+        </button>
+
+        {currentRole === 'admin' && (
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-300 font-bold text-xs transition-all active:scale-95"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+            <span>Edit Chapter Content</span>
+          </button>
+        )}
+      </div>
+
+      {/* Admin Curator Control Bar */}
+      {currentRole === 'admin' && (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-4 sm:p-5 border border-indigo-500/30 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  Director Content Curator
+                </span>
+                <span className="text-xs text-slate-300 font-medium">Full Access Active</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                You have administrative rights across this chapter. Nothing is locked. You can inspect all contents and edit the syllabus, concepts, and rules.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 shrink-0 self-end sm:self-auto"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>✏️ Edit Chapter Curriculum</span>
+          </button>
+        </div>
+      )}
 
       {/* Chapter Hero Banner */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -91,21 +138,43 @@ export const ChapterDetailView: React.FC = () => {
               {activeBoard} {activeGrade === '11' || activeGrade === '12' ? `Class ${activeGrade} Commerce` : `Grade ${activeGrade}`} English Medium
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {chapter.title}
-          </h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {chapter.title}
+            </h2>
+            {currentRole === 'admin' && (
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                title="Edit Chapter Title & Details"
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 flex items-center justify-center transition-colors"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <p className="text-sm text-slate-600 max-w-2xl leading-relaxed">
             {chapter.summary}
           </p>
         </div>
 
-        <button
-          onClick={() => startChapterTest(chapter.id)}
-          className="flex items-center justify-center space-x-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap self-start md:self-auto"
-        >
-          <GraduationCap className="w-5 h-5" />
-          <span>Take Chapter Test ({questions.length} Qs)</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+          {currentRole === 'admin' && (
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>Edit Syllabus</span>
+            </button>
+          )}
+          <button
+            onClick={() => startChapterTest(chapter.id)}
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap"
+          >
+            <GraduationCap className="w-5 h-5" />
+            <span>Take Chapter Test ({questions.length} Qs)</span>
+          </button>
+        </div>
       </div>
 
       {/* Video, PPT & Interactive Graphical Presentations Grid */}
@@ -319,6 +388,14 @@ export const ChapterDetailView: React.FC = () => {
       <PptSlideViewerModal
         pptResource={activePptModal}
         onClose={() => setActivePptModal(null)}
+      />
+
+      {/* Chapter Curriculum Editor Modal for Admin */}
+      <ChapterEditModal
+        isOpen={isEditModalOpen}
+        chapter={chapter}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={(chapterId, updates) => updateChapter(chapterId, updates)}
       />
     </div>
   );

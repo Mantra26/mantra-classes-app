@@ -2,6 +2,7 @@ import { Question } from '../types';
 import { CBSE_COMMERCE_QUESTION_BANK } from './cbseCommerceQuestions';
 import { EXTRA_QUESTIONS } from './extraQuestions';
 import { JUNIOR_QUESTIONS } from './juniorQuestions';
+import { NEW_SUBJECTS_QUESTION_BANK } from './newSubjectsQuestions';
 
 export const ICSE_QUESTION_BANK: Question[] = [
   // ================= MATHEMATICS =================
@@ -728,6 +729,7 @@ export const ICSE_QUESTION_BANK: Question[] = [
   },
   ...CBSE_COMMERCE_QUESTION_BANK,
   ...EXTRA_QUESTIONS,
-  ...JUNIOR_QUESTIONS
+  ...JUNIOR_QUESTIONS,
+  ...NEW_SUBJECTS_QUESTION_BANK
 ];
 

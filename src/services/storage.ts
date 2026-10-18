@@ -392,7 +392,22 @@ export const storage = {
   getChapters(): Chapter[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CHAPTERS);
-      return data ? JSON.parse(data) : ICSE_CHAPTERS;
+      if (!data) {
+        return ICSE_CHAPTERS;
+      }
+      const parsed: Chapter[] = JSON.parse(data);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return ICSE_CHAPTERS;
+      }
+      // Ensure any newly introduced curriculum chapters (like Sanskrit, SST, EVS) are merged
+      const existingIds = new Set(parsed.map(c => c.id));
+      const missingChapters = ICSE_CHAPTERS.filter(c => !existingIds.has(c.id));
+      if (missingChapters.length > 0) {
+        const merged = [...parsed, ...missingChapters];
+        localStorage.setItem(STORAGE_KEYS.CHAPTERS, JSON.stringify(merged));
+        return merged;
+      }
+      return parsed;
     } catch {
       return ICSE_CHAPTERS;
     }
@@ -400,6 +415,27 @@ export const storage = {
 
   saveChapters(chapters: Chapter[]): void {
     localStorage.setItem(STORAGE_KEYS.CHAPTERS, JSON.stringify(chapters));
+  },
+
+  updateChapter(chapterId: string, updates: Partial<Chapter>): Chapter[] {
+    const list = this.getChapters();
+    const updated = list.map(ch => (ch.id === chapterId ? { ...ch, ...updates } : ch));
+    this.saveChapters(updated);
+    return updated;
+  },
+
+  addChapter(newChapter: Chapter): Chapter[] {
+    const list = this.getChapters();
+    const updated = [...list, newChapter];
+    this.saveChapters(updated);
+    return updated;
+  },
+
+  deleteChapter(chapterId: string): Chapter[] {
+    const list = this.getChapters();
+    const updated = list.filter(ch => ch.id !== chapterId);
+    this.saveChapters(updated);
+    return updated;
   },
 
   addChapterResource(chapterId: string, resource: ChapterResource): Chapter[] {
