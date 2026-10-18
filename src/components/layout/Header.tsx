@@ -113,6 +113,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             >
               <option value="CBSE">CBSE (English Medium)</option>
               <option value="ICSE">ICSE (English Medium)</option>
+              <option value="IGCSE">Cambridge IGCSE</option>
             </select>
           </div>
 

@@ -171,6 +171,7 @@ export const StudentAuthModal: React.FC = () => {
                   >
                     <option value="ICSE">ICSE Board (CISCE)</option>
                     <option value="CBSE">CBSE Board (NCERT)</option>
+                    <option value="IGCSE">Cambridge IGCSE</option>
                   </select>
                 </div>
 

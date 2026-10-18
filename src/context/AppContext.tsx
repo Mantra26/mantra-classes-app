@@ -968,11 +968,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openPaymentModal = (plan?: { title: string; price: number; tag: string; perks: string[] }) => {
     setSelectedPlan(plan || {
-      title: 'Full ICSE Grade 7 Master Test Series Pass',
+      title: 'Master Pass',
       price: 499,
-      tag: 'Most Popular',
+      tag: 'Most Popular • All Classes',
       perks: [
-        'All 7 Subjects & 33 Chapters unlocked',
+        'All Classes (Grade 2 to 12 & Commerce) & all boards unlocked',
         'Unlimited Custom Mock Test Builder generation',
         'Detailed Video Lectures & PPT Slides by Uma Shukla',
         'Diagnostic Weakness Radar & 1-Click Remedial Practice',

@@ -1,7 +1,7 @@
 export type QuestionType = 'mcq' | 'true_false' | 'fill_blank' | 'short_answer' | 'long_answer';
 export type Difficulty = 'Average' | 'Tough';
 export type UserRole = 'student' | 'admin' | 'faculty';
-export type EducationBoard = 'CBSE' | 'ICSE';
+export type EducationBoard = 'CBSE' | 'ICSE' | 'IGCSE';
 export type GradeLevel = '2' | '3' | '4' | '5' | '6' | '7' | '11' | '12';
 export type ApprovalStatus = 'approved' | 'pending_approval' | 'rejected';
 

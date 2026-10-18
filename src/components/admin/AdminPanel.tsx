@@ -104,7 +104,7 @@ export const AdminPanel: React.FC = () => {
 
   // Student Directory State
   const [studentSearch, setStudentSearch] = useState('');
-  const [studentBoardFilter, setStudentBoardFilter] = useState<'all' | 'ICSE' | 'CBSE'>('all');
+  const [studentBoardFilter, setStudentBoardFilter] = useState<'all' | 'ICSE' | 'CBSE' | 'IGCSE'>('all');
 
   // Faculty form state
   const [facName, setFacName] = useState('');
@@ -1092,6 +1092,7 @@ export const AdminPanel: React.FC = () => {
               <option value="all">All Boards</option>
               <option value="ICSE">ICSE</option>
               <option value="CBSE">CBSE</option>
+              <option value="IGCSE">IGCSE</option>
             </select>
           </div>
         </div>

@@ -36,16 +36,16 @@ export const UpiPaymentModal: React.FC = () => {
     perks: string[];
   }>({
     id: 'master-pass',
-    title: 'ICSE Grade 7 Master All-Access Pass',
+    title: 'Master Pass',
     price: 499,
     popular: true,
-    description: 'Complete test series, custom builder, video lectures & graphical labs.',
+    description: 'Complete all-access learning & test series pass for all class students (Grade 2 to 12 & Commerce).',
     perks: [
-      'Unlimited Custom Multi-Chapter Mock Tests',
-      'All 7 Subjects & 33 Chapters unlocked',
-      'Diagnostic AI "Where You Should Work Hard" Engine',
-      'Interactive Graphical Labs (Optics, Cells, Fractions)',
-      'Video Lectures by Uma Shukla + PDF Summary Notes'
+      'All Classes (Grade 2 to 12 & Commerce) & all boards unlocked',
+      'Unlimited Custom Mock Tests across all subjects & boards',
+      'All Chapter tests, formula revision & step-by-step solutions',
+      'Interactive Graphical Labs (Optics, Cells, Fractions, Accounts)',
+      'Video Lectures by Uma Shukla + AI Remedial Radar'
     ]
   });
 
@@ -67,7 +67,7 @@ export const UpiPaymentModal: React.FC = () => {
   const ownerName = 'Uma Shukla (Mantra Classes)';
 
   // Exact UPI payment link scannable by Google Pay, PhonePe, Paytm, BHIM, Cred, etc.
-  const upiUri = `upi://pay?pa=${upiId}&pn=Uma%20Shukla&am=${selectedPlanTier.price}&cu=INR&tn=Mantra%20Classes%20Grade%207%20Pass`;
+  const upiUri = `upi://pay?pa=${upiId}&pn=Uma%20Shukla&am=${selectedPlanTier.price}&cu=INR&tn=Mantra%20Classes%20Pass`;
 
   // Plans List
   const plans = [
@@ -75,37 +75,38 @@ export const UpiPaymentModal: React.FC = () => {
       id: 'chapter-booster',
       title: 'Chapter Booster Pass',
       price: 149,
-      description: 'Unlock all 33 lesson-wise tests and formula revision guides.',
+      description: 'Unlock any 1 single chapter of your choice — whether CBSE, ICSE, or Cambridge IGCSE.',
       perks: [
-        'All 33 Chapter-wise tests',
-        'Step-by-step ICSE solutions',
-        'Formula Cheatsheets PDF'
+        'Single Chapter Unlock (Any 1 Chapter: CBSE, ICSE, or Cambridge IGCSE)',
+        'Lesson-wise diagnostic tests & instant marking evaluation',
+        'Step-by-step solutions & key concept formula sheets',
+        'Ideal for targeted revision before school unit tests'
       ]
     },
     {
       id: 'master-pass',
-      title: 'ICSE Grade 7 Master Pass',
+      title: 'Master Pass',
       price: 499,
       popular: true,
-      description: 'The complete learning and test package for Class 7.',
+      description: 'The all-in-one learning & test package for students of ALL classes and boards.',
       perks: [
-        'Unlimited Custom Mock Tests',
-        'All 7 Subjects & 33 Chapters',
-        'Interactive Graphical Labs',
-        'Weak Area Remedial Engine',
-        'Video Lectures by Uma Shukla'
+        'All Classes (Grade 2 to 12 & Commerce) & all boards unlocked',
+        'Unlimited Custom Mock Test Builder generation',
+        'All Chapter tests, formula sheets & step-by-step solutions',
+        'Interactive Graphical Labs (Optics, Cells, Fractions, Accounts)',
+        'Video Lectures by Uma Shukla + AI Weak-Area Radar'
       ]
     },
     {
       id: 'mentorship-vip',
       title: 'Direct Mentorship VIP',
       price: 999,
-      description: 'Master Pass + Weekly live doubt sessions with Uma Shukla.',
+      description: 'All-Class Master Pass + Weekly live doubt clearing & personalized mentorship with Uma Shukla.',
       perks: [
-        'Everything in Master Pass',
-        'Direct 1-on-1 Doubt Clearing',
-        'Weekly Performance Report',
-        'ICSE Board Exam Strategy Calls'
+        'Everything in Master Pass for all classes & boards',
+        'Direct 1-on-1 Doubt Resolution with Uma Shukla',
+        'Weekly Student Performance & Scorecard Radar Report',
+        'Board Examination Strategy & Topper Method Calls'
       ]
     }
   ];
