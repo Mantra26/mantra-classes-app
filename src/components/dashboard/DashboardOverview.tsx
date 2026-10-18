@@ -15,7 +15,10 @@ import {
   PlayCircle,
   FlaskConical,
   GraduationCap,
-  Award
+  Award,
+  Lock,
+  AlertTriangle,
+  MessageSquare
 } from 'lucide-react';
 
 export const DashboardOverview: React.FC = () => {
@@ -31,11 +34,147 @@ export const DashboardOverview: React.FC = () => {
     setActiveVideo,
     activeGrade,
     activeBoard,
-    filteredSubjects
+    filteredSubjects,
+    openPaymentModal
   } = useApp();
+
+  const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
+  const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
 
   return (
     <div className="space-y-6">
+      {/* Student Demo Mock Test & Payment Status Banner */}
+      {user.paymentStatus === 'pending_authorization' ? (
+        <div className="rounded-3xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border-2 border-amber-400/50 p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-xs">
+              <Clock className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-950">
+                  Payment Awaiting Director Authorization
+                </span>
+                <span className="text-xs text-amber-900 font-mono font-bold">UTR: {user.pendingUtr}</span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                Your Fee for {user.pendingPlanName || 'Course Module'} (₹{user.pendingAmount || 499}) is Under Review
+              </h3>
+              <p className="text-xs text-slate-600">
+                Director Uma Shukla is verifying your transaction in the Admin Desk. Once approved, all tests in this module will be unlocked automatically.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href={`https://wa.me/918707794159?text=${encodeURIComponent(
+              `Hello Director Uma Shukla,\nMy payment for ${user.pendingPlanName || 'Course Module'} (UTR: ${user.pendingUtr}) is pending authorization.\nStudent: ${user.name}\nMobile: ${user.mobileNumber || ''}\nPlease authorize my account.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center space-x-1.5"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>WhatsApp Director</span>
+          </a>
+        </div>
+      ) : user.paymentStatus === 'rejected' ? (
+        <div className="rounded-3xl bg-rose-50 border-2 border-rose-300 p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center font-black shrink-0">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-rose-200 text-rose-900">
+                Verification Update
+              </span>
+              <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                UTR Verification Incomplete
+              </h3>
+              <p className="text-xs text-slate-600">
+                Director Uma Shukla could not match your previous UTR with the bank statement. Please submit a valid 12-digit UTR.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => openPaymentModal()}
+            className="shrink-0 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-all"
+          >
+            Re-submit UTR / Pay Fee
+          </button>
+        </div>
+      ) : !hasUsedDemo && !isAuthorized ? (
+        <div className="rounded-3xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent border-2 border-indigo-200 p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shrink-0 shadow-sm">
+              <Sparkles className="w-6 h-6 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                  New Student Welcome Offer
+                </span>
+                <span className="text-xs font-bold text-indigo-700">1 Free Demo Mock Test Available</span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                Take Your Free Diagnostic Benchmark Mock Test
+              </h3>
+              <p className="text-xs text-slate-600">
+                Experience Mantra Classes' {activeBoard} Grade {activeGrade} test engine with marking schemes and AI Weakness Radar before enrolling.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setView('test-series')}
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center space-x-1.5"
+          >
+            <span>Start 1 Free Demo Test</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : hasUsedDemo && !isAuthorized ? (
+        <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-800/60 p-5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  Free Demo Mock Test Completed
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-white mt-0.5">
+                Unlock Full Course Modules & Tests
+              </h3>
+              <p className="text-xs text-indigo-200">
+                You have completed your 1 free demo mock test. To unlock chapter tests, full papers, and custom mocks, choose a module and submit payment.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => openPaymentModal()}
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center space-x-1.5"
+          >
+            <span>Choose Module & Pay via UPI</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-emerald-900 flex items-center justify-between text-xs">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span><b>Mantra Classes PRO Active:</b> Authorized by Director Uma Shukla for {user.authorizedModules?.join(', ') || 'Master Pass'}</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+            Full Access
+          </span>
+        </div>
+      )}
+
       {/* Hero Welcome Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-950 text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
         {/* Subtle decorative circles */}

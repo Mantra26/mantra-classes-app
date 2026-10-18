@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { EducationBoard, GradeLevel, UserProfile } from '../../types';
-import { DEMO_STUDENT } from '../../data/defaultUser';
 import {
   GraduationCap,
   Phone,
@@ -59,10 +58,11 @@ export const StudentAuthModal: React.FC = () => {
       return;
     }
 
+    const cleanMobile = mobileNumber.replace(/\D/g, '');
     const studentProfile: Partial<UserProfile> = {
-      id: `stu-${mobileNumber.slice(-4) || Date.now()}`,
+      id: `stu-${cleanMobile.slice(-4) || Date.now()}`,
       name: fullName.trim(),
-      mobileNumber: mobileNumber.replace(/\D/g, ''),
+      mobileNumber: cleanMobile,
       grade: selectedGrade === '11' || selectedGrade === '12'
         ? `Class ${selectedGrade} Commerce (${selectedBoard})`
         : `Grade ${selectedGrade} (${selectedBoard})`,
@@ -70,20 +70,19 @@ export const StudentAuthModal: React.FC = () => {
       board: selectedBoard,
       schoolName: schoolName.trim() || 'Mantra Classes Student',
       isLoggedIn: true,
-      streakDays: user.streakDays || 1,
-      coins: user.coins || 100,
+      isProMember: false,
+      demoMockTestTaken: false,
+      paymentStatus: 'none',
+      streakDays: 1,
+      coins: 50,
+      totalTestsTaken: 0,
+      averageScorePercentage: 0,
       joinedAt: new Date().toISOString()
     };
 
     setActiveBoard(selectedBoard);
     setActiveGrade(selectedGrade);
     loginStudent(studentProfile as UserProfile);
-  };
-
-  const handleQuickDemoLogin = () => {
-    setActiveBoard(DEMO_STUDENT.board || 'ICSE');
-    setActiveGrade(DEMO_STUDENT.gradeLevel || '7');
-    loginStudent(DEMO_STUDENT);
   };
 
   return (
@@ -283,16 +282,10 @@ export const StudentAuthModal: React.FC = () => {
             </form>
           )}
 
-          {/* Quick Demo Login Option */}
-          <div className="pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleQuickDemoLogin}
-              className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-bold text-xs border border-slate-200 transition-colors flex items-center justify-center space-x-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Instant Demo Student Access (Aarav Sharma • +91 9876543210)</span>
-            </button>
+          {/* Trial Benefit Highlight */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-center space-x-2 text-xs text-slate-600 bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Includes <strong>1 Free Demo Mock Test</strong> upon mobile login!</span>
           </div>
         </div>
       </div>

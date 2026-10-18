@@ -14,7 +14,8 @@ import {
   ChevronUp,
   MessageSquare,
   ExternalLink,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 
 export const AssignedTestsView: React.FC = () => {
@@ -24,8 +25,13 @@ export const AssignedTestsView: React.FC = () => {
     setActiveFacultyTest,
     activeGrade,
     activeBoard,
-    user
+    user,
+    testAttempts,
+    openPaymentModal
   } = useApp();
+
+  const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
+  const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
 
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'evaluated'>('pending');
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
@@ -196,13 +202,29 @@ export const AssignedTestsView: React.FC = () => {
                   </div>
 
                   <div className="pt-5">
-                    <button
-                      onClick={() => setActiveFacultyTest(test)}
-                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-98"
-                    >
-                      <Play className="w-4 h-4 fill-white" />
-                      <span>Start & Solve Test Paper</span>
-                    </button>
+                    {hasUsedDemo && !isAuthorized ? (
+                      <button
+                        onClick={() => {
+                          if (user.paymentStatus === 'pending_authorization') {
+                            alert(`Your payment of ₹${user.pendingAmount || 499} for ${user.pendingPlanName || 'Course Module'} is currently pending authorization by Director Uma Shukla.\n\nOnce authorized, all tests in this module will be unlocked.`);
+                          } else {
+                            openPaymentModal();
+                          }
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs sm:text-sm transition-all"
+                      >
+                        <Lock className="w-4 h-4 text-amber-600" />
+                        <span>{user.paymentStatus === 'pending_authorization' ? '⏳ Awaiting Director Authorization' : '🔒 Unlock Test Paper with Pro Pass'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setActiveFacultyTest(test)}
+                        className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-98"
+                      >
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>{!hasUsedDemo && !isAuthorized ? '✨ Start 1 Free Demo Test Paper' : 'Start & Solve Test Paper'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

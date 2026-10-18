@@ -241,10 +241,21 @@ export interface UserProfile {
   averageScorePercentage: number;
   coins: number;
   joinedAt?: string;
+  demoMockTestTaken?: boolean;
+  paymentStatus?: 'none' | 'pending_authorization' | 'authorized' | 'rejected';
+  pendingPlanName?: string;
+  pendingPlanId?: string;
+  pendingAmount?: number;
+  pendingUtr?: string;
+  authorizedModules?: string[];
 }
 
 export interface PaymentTransaction {
   id: string;
+  studentId?: string;
+  studentName?: string;
+  studentMobile?: string;
+  planId?: string;
   planName: string;
   amount: number;
   upiId: string;
@@ -253,6 +264,8 @@ export interface PaymentTransaction {
   timestamp: string;
   status: 'SUCCESS' | 'PENDING' | 'FAILED';
   receiptNumber: string;
+  authorizedBy?: string;
+  authorizedAt?: string;
 }
 
 export interface FacultyTestPaper {

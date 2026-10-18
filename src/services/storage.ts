@@ -15,7 +15,7 @@ import {
   ApprovalStatus,
   EducationBoard
 } from '../types';
-import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS, INITIAL_REGISTERED_STUDENTS } from '../data/defaultUser';
+import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS, INITIAL_REGISTERED_STUDENTS, INITIAL_TRANSACTIONS } from '../data/defaultUser';
 import { ICSE_CHAPTERS } from '../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../data/questionBank';
 
@@ -569,15 +569,36 @@ export const storage = {
   getTransactions(): PaymentTransaction[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      return data ? JSON.parse(data) : [];
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_TRANSACTIONS;
     } catch {
-      return [];
+      return INITIAL_TRANSACTIONS;
     }
   },
 
   saveTransaction(tx: PaymentTransaction): PaymentTransaction[] {
     const list = this.getTransactions();
-    const updated = [tx, ...list];
+    const updated = [tx, ...list.filter(t => t.id !== tx.id)];
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
+    return updated;
+  },
+
+  updateTransactionStatus(id: string, status: 'SUCCESS' | 'PENDING' | 'FAILED', authorizedBy?: string): PaymentTransaction[] {
+    const list = this.getTransactions();
+    const updated = list.map(t => {
+      if (t.id === id) {
+        return {
+          ...t,
+          status,
+          authorizedBy: authorizedBy || 'Uma Shukla (Director)',
+          authorizedAt: new Date().toISOString()
+        };
+      }
+      return t;
+    });
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
     return updated;
   },

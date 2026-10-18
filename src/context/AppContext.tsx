@@ -140,13 +140,17 @@ interface AppContextType {
   closeScorecard: () => void;
   openScorecardForAttempt: (attempt: TestAttempt) => void;
 
-  // Payment
+  // Payment & Authorization
   isPaymentModalOpen: boolean;
   selectedPlan: { title: string; price: number; tag: string; perks: string[] } | null;
   openPaymentModal: (plan?: { title: string; price: number; tag: string; perks: string[] }) => void;
   closePaymentModal: () => void;
   recordPaymentSuccess: (utr: string, amount: number, planName: string) => void;
+  submitStudentPayment: (utr: string, amount: number, planName: string, planId: string) => void;
+  authorizeStudentPayment: (transactionId: string) => void;
+  rejectStudentPayment: (transactionId: string, reason?: string) => void;
   transactions: PaymentTransaction[];
+  pendingPaymentsCount: number;
 
   // Active Grade & Board System
   activeGrade: GradeLevel;
@@ -369,6 +373,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const submitStudentTest = (submission: StudentTestSubmission) => {
     const updated = storage.saveStudentSubmission(submission);
     setStudentSubmissions(updated);
+    updateUser({
+      demoMockTestTaken: true,
+      totalTestsTaken: (user.totalTestsTaken || 0) + 1
+    });
     confetti({
       particleCount: 80,
       spread: 70,
@@ -625,10 +633,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     subjectId?: SubjectId,
     chapterIds: string[] = []
   ) => {
+    const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
+    const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
+
+    if (currentRole === 'student' && hasUsedDemo && !isAuthorized) {
+      if (user.paymentStatus === 'pending_authorization') {
+        alert(
+          `Your payment of ₹${user.pendingAmount || 499} for ${user.pendingPlanName || 'Course Module'} is currently pending authorization by Director Uma Shukla.\n\nOnce authorized, all tests in this module will be unlocked.`
+        );
+      } else {
+        openPaymentModal();
+      }
+      return;
+    }
+
     if (questions.length === 0) {
       alert('No questions found matching your filter criteria. Please broaden your selection.');
       return;
     }
+
+    const testDisplayTitle = (!hasUsedDemo && !isAuthorized && currentRole === 'student')
+      ? `${title} (Free Trial Demo Mock Test)`
+      : title;
 
     const answersInit: Record<string, UserAnswer> = {};
     questions.forEach(q => {
@@ -639,7 +665,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setActiveTest({
-      title,
+      title: testDisplayTitle,
       testType,
       subjectId,
       chapterIds,
@@ -910,7 +936,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateUser({
       totalTestsTaken: totalTaken,
       averageScorePercentage: avgScore,
-      coins: user.coins + (percentage >= 70 ? 25 : 10)
+      coins: user.coins + (percentage >= 70 ? 25 : 10),
+      demoMockTestTaken: true
     });
 
     if (percentage >= 75) {
@@ -959,33 +986,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsPaymentModalOpen(false);
   };
 
-  const recordPaymentSuccess = (utr: string, amount: number, planName: string) => {
-    const receiptNumber = `MC-REC-${Math.floor(100000 + Math.random() * 900000)}`;
+  const pendingPaymentsCount = useMemo(() => {
+    return transactions.filter(t => t.status === 'PENDING').length;
+  }, [transactions]);
+
+  const submitStudentPayment = (utr: string, amount: number, planName: string, planId?: string) => {
+    const receiptNumber = `MC-REQ-${Math.floor(100000 + Math.random() * 900000)}`;
     const tx: PaymentTransaction = {
       id: `tx-${Date.now()}`,
       planName,
+      planId: planId || 'master-pass',
       amount,
       upiId: '8707794159@ptyes',
       utrNumber: utr,
       paymentMethod: 'UPI_QR',
       timestamp: new Date().toISOString(),
-      status: 'SUCCESS',
-      receiptNumber
+      status: 'PENDING',
+      receiptNumber,
+      studentId: user.id,
+      studentName: user.name,
+      studentMobile: user.mobileNumber || ''
     };
 
     const updatedTx = storage.saveTransaction(tx);
     setTransactions(updatedTx);
 
-    updateUser({
-      isProMember: true,
-      proExpiryDate: '2027-03-31'
-    });
+    const updatedUser: UserProfile = {
+      ...user,
+      paymentStatus: 'pending_authorization',
+      pendingPlanName: planName,
+      pendingPlanId: planId || 'master-pass',
+      pendingAmount: amount,
+      pendingUtr: utr
+    };
+    storage.saveUser(updatedUser);
+    setUser(updatedUser);
+
+    const updatedReg = storage.saveRegisteredStudent(updatedUser);
+    setRegisteredStudents(updatedReg);
+  };
+
+  const authorizeStudentPayment = (transactionId: string) => {
+    const tx = transactions.find(t => t.id === transactionId);
+    const updatedTx = storage.updateTransactionStatus(transactionId, 'SUCCESS', 'Uma Shukla (Director)');
+    setTransactions(updatedTx);
+
+    if (tx) {
+      const planId = tx.planId || 'master-pass';
+      if (user.id === tx.studentId || (tx.studentMobile && user.mobileNumber === tx.studentMobile)) {
+        const existingModules = user.authorizedModules || [];
+        const updatedModules = Array.from(new Set([...existingModules, planId]));
+        const updatedUser: UserProfile = {
+          ...user,
+          isProMember: true,
+          paymentStatus: 'authorized',
+          authorizedModules: updatedModules,
+          proExpiryDate: '2027-03-31'
+        };
+        storage.saveUser(updatedUser);
+        setUser(updatedUser);
+      }
+
+      const allStudents = storage.getRegisteredStudents();
+      const updatedStudents = allStudents.map(s => {
+        if (s.id === tx.studentId || (tx.studentMobile && s.mobileNumber === tx.studentMobile)) {
+          const mods = Array.from(new Set([...(s.authorizedModules || []), planId]));
+          return {
+            ...s,
+            isProMember: true,
+            paymentStatus: 'authorized' as const,
+            authorizedModules: mods,
+            proExpiryDate: '2027-03-31'
+          };
+        }
+        return s;
+      });
+      localStorage.setItem('mantra_registered_students', JSON.stringify(updatedStudents));
+      setRegisteredStudents(updatedStudents);
+    }
 
     confetti({
-      particleCount: 100,
-      spread: 90,
+      particleCount: 70,
+      spread: 60,
       origin: { y: 0.5 }
     });
+  };
+
+  const rejectStudentPayment = (transactionId: string, reason?: string) => {
+    const tx = transactions.find(t => t.id === transactionId);
+    const updatedTx = storage.updateTransactionStatus(transactionId, 'FAILED', `Uma Shukla (Director) - ${reason || 'Invalid UTR'}`);
+    setTransactions(updatedTx);
+
+    if (tx) {
+      if (user.id === tx.studentId || (tx.studentMobile && user.mobileNumber === tx.studentMobile)) {
+        const updatedUser: UserProfile = {
+          ...user,
+          paymentStatus: 'rejected'
+        };
+        storage.saveUser(updatedUser);
+        setUser(updatedUser);
+      }
+
+      const allStudents = storage.getRegisteredStudents();
+      const updatedStudents = allStudents.map(s => {
+        if (s.id === tx.studentId || (tx.studentMobile && s.mobileNumber === tx.studentMobile)) {
+          return {
+            ...s,
+            paymentStatus: 'rejected' as const
+          };
+        }
+        return s;
+      });
+      localStorage.setItem('mantra_registered_students', JSON.stringify(updatedStudents));
+      setRegisteredStudents(updatedStudents);
+    }
+  };
+
+  const recordPaymentSuccess = (utr: string, amount: number, planName: string) => {
+    submitStudentPayment(utr, amount, planName, 'master-pass');
   };
 
   const resetAppDemoData = () => {
@@ -1063,7 +1181,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openPaymentModal,
         closePaymentModal,
         recordPaymentSuccess,
+        submitStudentPayment,
+        authorizeStudentPayment,
+        rejectStudentPayment,
         transactions,
+        pendingPaymentsCount,
         activeGrade,
         setActiveGrade,
         activeBoard,

@@ -22,6 +22,7 @@ export const TestSeriesExplorer: React.FC = () => {
     startChapterTest,
     setView,
     user,
+    testAttempts,
     openPaymentModal,
     setSelectedSubjectId,
     activeGrade,
@@ -29,6 +30,9 @@ export const TestSeriesExplorer: React.FC = () => {
     filteredSubjects,
     filteredChapters: chaptersByGrade
   } = useApp();
+
+  const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
+  const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
 
   const [activeTab, setActiveTab] = useState<'subject-wise' | 'lesson-wise'>('subject-wise');
   const [filterSubjectId, setFilterSubjectId] = useState<SubjectId | 'all'>('all');
@@ -170,13 +174,29 @@ export const TestSeriesExplorer: React.FC = () => {
                 </div>
 
                 <div className="pt-2">
-                  <button
-                    onClick={() => startSubjectTest(subject.id)}
-                    className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-100 transition-all active:scale-95"
-                  >
-                    <span>Start Full {subject.name} Test</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  {hasUsedDemo && !isAuthorized ? (
+                    <button
+                      onClick={() => {
+                        if (user.paymentStatus === 'pending_authorization') {
+                          alert(`Your payment of ₹${user.pendingAmount || 499} for ${user.pendingPlanName || 'Course Module'} is currently pending authorization by Director Uma Shukla.\n\nOnce authorized, all tests in this module will be unlocked.`);
+                        } else {
+                          openPaymentModal();
+                        }
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs sm:text-sm transition-all"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>{user.paymentStatus === 'pending_authorization' ? '⏳ Awaiting Director Authorization' : '🔒 Unlock Module with Pro Pass'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => startSubjectTest(subject.id)}
+                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-100 transition-all active:scale-95"
+                    >
+                      <span>{!hasUsedDemo && !isAuthorized ? `✨ Start Free Demo Test (${subject.name})` : `Start Full ${subject.name} Test`}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -190,7 +210,7 @@ export const TestSeriesExplorer: React.FC = () => {
           {filteredChapters.map(chapter => {
             const questions = ICSE_QUESTION_BANK.filter(q => q.chapterId === chapter.id);
             const subject = filteredSubjects.find(s => s.id === chapter.subjectId) || ICSE_SUBJECTS.find(s => s.id === chapter.subjectId);
-            const isLocked = chapter.isLocked && !user.isProMember;
+            const isChapterLocked = (hasUsedDemo && !isAuthorized) || (chapter.isLocked && !isAuthorized);
 
             return (
               <div
@@ -225,20 +245,26 @@ export const TestSeriesExplorer: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100">
-                  {isLocked ? (
+                  {isChapterLocked ? (
                     <button
-                      onClick={() => openPaymentModal()}
+                      onClick={() => {
+                        if (user.paymentStatus === 'pending_authorization') {
+                          alert(`Your payment of ₹${user.pendingAmount || 499} for ${user.pendingPlanName || 'Course Module'} is currently pending authorization by Director Uma Shukla.`);
+                        } else {
+                          openPaymentModal();
+                        }
+                      }}
                       className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs transition-colors"
                     >
                       <Lock className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Unlock with Pro Pass</span>
+                      <span>{user.paymentStatus === 'pending_authorization' ? '⏳ Awaiting Director Auth' : 'Unlock with Pro Pass'}</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => startChapterTest(chapter.id)}
                       className="w-full flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-xs transition-all active:scale-95"
                     >
-                      <span>Take Chapter Diagnostic</span>
+                      <span>{!hasUsedDemo && !isAuthorized ? '✨ Take Free Demo Test' : 'Take Chapter Diagnostic'}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   )}

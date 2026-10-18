@@ -14,14 +14,16 @@ import {
   Printer,
   Smartphone,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 
 export const UpiPaymentModal: React.FC = () => {
   const {
     isPaymentModalOpen,
     closePaymentModal,
-    recordPaymentSuccess,
+    submitStudentPayment,
     user
   } = useApp();
 
@@ -116,7 +118,7 @@ export const UpiPaymentModal: React.FC = () => {
 
   const handleConfirmUtr = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!utrNumber || utrNumber.length < 8) {
+    if (!utrNumber || utrNumber.trim().length < 8) {
       alert('Please enter a valid 12-digit UPI Reference / UTR Number from your payment app.');
       return;
     }
@@ -124,17 +126,17 @@ export const UpiPaymentModal: React.FC = () => {
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
-      const receiptNo = `MC-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+      const receiptNo = `MC-REQ-${Math.floor(100000 + Math.random() * 900000)}`;
       const now = new Date().toLocaleString();
       setPaymentDoneTx({
         receiptNo,
-        utr: utrNumber,
+        utr: utrNumber.trim(),
         amount: selectedPlanTier.price,
         plan: selectedPlanTier.title,
         date: now
       });
-      recordPaymentSuccess(utrNumber, selectedPlanTier.price, selectedPlanTier.title);
-    }, 1500);
+      submitStudentPayment(utrNumber.trim(), selectedPlanTier.price, selectedPlanTier.title, selectedPlanTier.id);
+    }, 1200);
   };
 
   return (
@@ -170,38 +172,63 @@ export const UpiPaymentModal: React.FC = () => {
         {/* Modal Scrollable Body */}
         <div className="p-5 sm:p-7 overflow-y-auto flex-1 space-y-6">
           {paymentDoneTx ? (
-            /* PAYMENT SUCCESS & OFFICIAL FEE RECEIPT VIEW */
+            /* PAYMENT SUBMITTED & AWAITING DIRECTOR AUTHORIZATION VIEW */
             <div className="space-y-6 animate-in zoom-in-95 duration-200">
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-md">
-                  <CheckCircle2 className="w-10 h-10" />
+                <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center shadow-md">
+                  <Clock className="w-10 h-10 animate-pulse text-amber-600" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900">Payment Verified Successfully! 🎉</h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Your transaction to <span className="font-bold text-indigo-700">Uma Shukla ({upiId})</span> has been confirmed. Your Mantra Classes PRO Account is now active.
+                <h3 className="text-2xl font-black text-slate-900">Payment Submitted & Awaiting Authorization! ⏳</h3>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+                  Your payment of <span className="font-bold text-slate-900">₹{paymentDoneTx.amount}</span> with UTR <span className="font-mono font-bold text-indigo-700">{paymentDoneTx.utr}</span> for <span className="font-bold text-indigo-800">{paymentDoneTx.plan}</span> has been submitted.
+                  Director Uma Shukla will verify the transaction on the Admin Desk and authorize your module access.
                 </p>
               </div>
 
-              {/* Official Printable Fee Receipt */}
-              <div className="p-6 sm:p-8 rounded-3xl bg-slate-50 border-2 border-indigo-100 shadow-sm space-y-6 max-w-2xl mx-auto font-sans">
+              {/* Direct WhatsApp Call to Action */}
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                <div className="space-y-0.5 text-center sm:text-left">
+                  <div className="text-xs font-bold text-emerald-900 flex items-center justify-center sm:justify-start gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Instant WhatsApp Notification</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700">
+                    Send your UTR directly to Director Uma Shukla (+91 87077 94159) for faster activation.
+                  </p>
+                </div>
+                <a
+                  href={`https://wa.me/918707794159?text=${encodeURIComponent(
+                    `Hello Director Uma Shukla,\nI have submitted fee of ₹${paymentDoneTx.amount} for ${paymentDoneTx.plan}.\nStudent Name: ${user.name}\nRegistered Mobile: ${user.mobileNumber || ''}\nUTR Reference: ${paymentDoneTx.utr}\nRequest ID: ${paymentDoneTx.receiptNo}\nKindly verify and authorize my module access.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center space-x-1.5"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Notify via WhatsApp</span>
+                </a>
+              </div>
+
+              {/* Official Printable Fee Submission Request Voucher */}
+              <div className="p-6 sm:p-8 rounded-3xl bg-slate-50 border-2 border-amber-200 shadow-sm space-y-6 max-w-2xl mx-auto font-sans">
                 {/* Receipt Header */}
                 <div className="flex items-start justify-between border-b-2 border-slate-200 pb-4">
                   <div>
-                    <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
-                      Official E-Receipt / Tuition Fee Voucher
+                    <div className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                      Fee Submission & Verification Slip
                     </div>
                     <h4 className="text-xl font-black text-slate-900">Mantra Classes</h4>
                     <p className="text-xs text-slate-600">
                       Director & Payee: <b>Uma Shukla</b> ({upiId})
                     </p>
                     <p className="text-[11px] text-slate-400">
-                      State Bank of India (SBI UPI) • ICSE English Medium Portal
+                      State Bank of India (SBI UPI) • ICSE / CBSE English Medium Portal
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-emerald-100 text-emerald-800">
-                      PAID IN FULL
+                    <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                      AWAITING ADMIN AUTHORIZATION
                     </span>
                     <div className="text-xs font-mono font-bold text-slate-700 mt-2">
                       {paymentDoneTx.receiptNo}
@@ -215,7 +242,7 @@ export const UpiPaymentModal: React.FC = () => {
                   <div>
                     <span className="text-slate-400 font-semibold">Student Name:</span>
                     <div className="font-bold text-slate-900 text-sm">{user.name}</div>
-                    <div className="text-slate-500">{user.grade}</div>
+                    <div className="text-slate-500 font-mono">📱 +91 {user.mobileNumber || 'Registered Student'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 font-semibold">Enrolled Course:</span>
@@ -225,25 +252,25 @@ export const UpiPaymentModal: React.FC = () => {
                   <div>
                     <span className="text-slate-400 font-semibold">Beneficiary UPI ID:</span>
                     <div className="font-mono font-bold text-indigo-800">{upiId}</div>
-                    <div className="font-mono text-slate-500 text-[11px]">UTR: {paymentDoneTx.utr}</div>
+                    <div className="font-mono text-slate-600 text-[11px]">Submitted UTR: <b>{paymentDoneTx.utr}</b></div>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-semibold">Total Fee Paid:</span>
+                    <span className="text-slate-400 font-semibold">Total Fee Transferred:</span>
                     <div className="text-lg font-black text-emerald-700">₹{paymentDoneTx.amount}.00</div>
-                    <div className="text-[10px] text-slate-400">Verified via SBI UPI</div>
+                    <div className="text-[10px] text-slate-400">Subject to Director confirmation</div>
                   </div>
                 </div>
 
                 {/* Authorized Signatory Stamp */}
                 <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
                   <div className="text-[11px] text-slate-400">
-                    Verified electronic payment voucher.
+                    Electronic fee submission receipt for Mantra Classes records.
                   </div>
                   <div className="text-right">
                     <div className="inline-block px-3 py-1 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 font-serif italic text-xs">
-                      Authorized: Uma Shukla
+                      Director: Uma Shukla
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Director & Senior ICSE Faculty</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Admin & Head Faculty Desk</div>
                   </div>
                 </div>
               </div>
@@ -255,7 +282,7 @@ export const UpiPaymentModal: React.FC = () => {
                   className="flex items-center space-x-2 px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Print Fee Receipt</span>
+                  <span>Print Slip</span>
                 </button>
 
                 <button
@@ -263,15 +290,40 @@ export const UpiPaymentModal: React.FC = () => {
                     setPaymentDoneTx(null);
                     closePaymentModal();
                   }}
-                  className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                  className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-xs shadow-md transition-all active:scale-95"
                 >
-                  <span>Start Learning with Pro Pass</span>
+                  <span>Understood, Check Status on Dashboard</span>
                 </button>
               </div>
             </div>
           ) : (
             /* PAYMENT PROCESSOR VIEW: QR CODE & UPI FORM */
             <div className="space-y-6">
+              {user.paymentStatus === 'pending_authorization' && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-amber-950">You have a payment pending Director authorization</div>
+                      <div className="text-[11px] text-amber-800">
+                        Plan: <b>{user.pendingPlanName || 'Course Module'}</b> (₹{user.pendingAmount || 499}) • UTR: <span className="font-mono font-bold">{user.pendingUtr}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href={`https://wa.me/918707794159?text=${encodeURIComponent(
+                      `Hello Director Uma Shukla,\nMy payment for ${user.pendingPlanName || 'Course Module'} (UTR: ${user.pendingUtr}) is pending authorization.\nStudent: ${user.name}\nMobile: ${user.mobileNumber || ''}\nPlease authorize my module access.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs flex items-center space-x-1"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp Director</span>
+                  </a>
+                </div>
+              )}
+
               {/* Plan Tier Selector */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">

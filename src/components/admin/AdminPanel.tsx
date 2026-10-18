@@ -33,7 +33,12 @@ import {
   ExternalLink,
   EyeOff,
   Lock,
-  Search
+  Search,
+  CreditCard,
+  QrCode,
+  Copy,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -65,7 +70,11 @@ export const AdminPanel: React.FC = () => {
     updateAdminPin,
     facultyPin,
     updateFacultyPin,
-    registeredStudents
+    registeredStudents,
+    transactions,
+    authorizeStudentPayment,
+    rejectStudentPayment,
+    pendingPaymentsCount
   } = useApp();
 
   // Modal states
@@ -73,6 +82,8 @@ export const AdminPanel: React.FC = () => {
   const [showPptModal, setShowPptModal] = useState(false);
   const [showTestPaperModal, setShowTestPaperModal] = useState(false);
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
+  const [paymentTab, setPaymentTab] = useState<'pending' | 'all'>('pending');
+  const [copiedUtrId, setCopiedUtrId] = useState<string | null>(null);
   const [previewPpt, setPreviewPpt] = useState<ChapterResource | null>(null);
   const [previewTest, setPreviewTest] = useState<FacultyTestPaper | null>(null);
   const [previewSheetModal, setPreviewSheetModal] = useState<any | null>(null);
@@ -584,7 +595,7 @@ export const AdminPanel: React.FC = () => {
       </div>
 
       {/* Metrics Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3.5">
         <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <Users className="w-5 h-5" />
@@ -672,6 +683,36 @@ export const AdminPanel: React.FC = () => {
               )}
             </div>
             <div className="text-[11px] font-semibold text-slate-500">Pending Approvals</div>
+          </div>
+        </div>
+
+        {/* 8th Metric: Student Fee Authorizations */}
+        <div
+          className={`p-4 rounded-2xl border shadow-xs flex items-center space-x-3 ${
+            pendingPaymentsCount > 0
+              ? 'bg-emerald-500/15 border-emerald-400 ring-2 ring-emerald-500/30'
+              : 'bg-white border-slate-200/90'
+          }`}
+        >
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              pendingPaymentsCount > 0
+                ? 'bg-emerald-600 text-white font-black animate-pulse'
+                : 'bg-emerald-50 text-emerald-600'
+            }`}
+          >
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xl font-black text-slate-900">{pendingPaymentsCount}</span>
+              {pendingPaymentsCount > 0 && (
+                <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-950">
+                  New UTR
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500">Fee Auth Desk</div>
           </div>
         </div>
       </div>
@@ -1090,13 +1131,30 @@ export const AdminPanel: React.FC = () => {
                       />
                       <div>
                         <h4 className="font-bold text-slate-900 text-sm">{stu.name}</h4>
-                        <div className="flex items-center space-x-1.5 mt-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800">
                             {stu.board || 'ICSE'}
                           </span>
                           <span className="text-[10px] font-bold text-slate-600">
                             {stu.grade || `Grade ${stu.gradeLevel || '7'}`}
                           </span>
+                          {stu.paymentStatus === 'authorized' ? (
+                            <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              ✓ PRO Authorized
+                            </span>
+                          ) : stu.paymentStatus === 'pending_authorization' ? (
+                            <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                              ⏳ UTR Pending (₹{stu.pendingAmount || 499})
+                            </span>
+                          ) : stu.demoMockTestTaken ? (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                              Demo Test Used
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700">
+                              1 Free Demo Left
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1156,6 +1214,248 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ================= SECTION: STUDENT PAYMENT AUTHORIZATIONS & MODULE ACTIVATION DESK ================= */}
+      <div id="payment-authorizations-desk" className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  Student Payment Authorizations & Module Activation Desk
+                </h3>
+                {pendingPaymentsCount > 0 ? (
+                  <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                    {pendingPaymentsCount} Awaiting Authorization
+                  </span>
+                ) : (
+                  <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    All Authorized
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                Inspect student mobile numbers & UTR reference numbers to authorize paid course modules on Director Uma Shukla's SBI UPI (8707794159@ptyes)
+              </p>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setPaymentTab('pending')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                paymentTab === 'pending'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Pending Verification ({transactions.filter(t => t.status === 'PENDING').length})
+            </button>
+            <button
+              onClick={() => setPaymentTab('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                paymentTab === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Transactions ({transactions.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Transactions Grid */}
+        {(() => {
+          const list = paymentTab === 'pending'
+            ? transactions.filter(t => t.status === 'PENDING')
+            : transactions;
+
+          if (list.length === 0) {
+            return (
+              <div className="py-12 text-center text-slate-400 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-700">
+                  {paymentTab === 'pending' ? 'No Pending Payment Authorizations' : 'No Transactions Recorded'}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  {paymentTab === 'pending'
+                    ? 'All student UPI submissions have been authorized. When students submit a new UTR, it will appear here immediately.'
+                    : 'Transactions made by students will appear in this audit log.'}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {list.map(tx => {
+                const isPending = tx.status === 'PENDING';
+                const isSuccess = tx.status === 'SUCCESS';
+                const isFailed = tx.status === 'FAILED';
+
+                return (
+                  <div
+                    key={tx.id}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
+                      isPending
+                        ? 'bg-amber-50/30 border-amber-300 ring-2 ring-amber-400/20'
+                        : isSuccess
+                        ? 'bg-white border-slate-200 hover:border-emerald-300'
+                        : 'bg-rose-50/20 border-rose-200'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Bar: Plan & Status */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-bold text-slate-900 text-base">{tx.planName}</h4>
+                            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              ₹{tx.amount}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            Receipt ID: {tx.receiptNumber} • {new Date(tx.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div>
+                          {isPending && (
+                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center space-x-1 animate-pulse">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              <span>Pending Auth</span>
+                            </span>
+                          )}
+                          {isSuccess && (
+                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center space-x-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Authorized PRO</span>
+                            </span>
+                          )}
+                          {isFailed && (
+                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center space-x-1">
+                              <XCircle className="w-3 h-3 text-rose-600" />
+                              <span>Rejected</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Student Info & Mobile Number */}
+                      <div className="p-3 rounded-xl bg-white border border-slate-200/90 space-y-2 mb-3 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500 font-medium">Student Name:</span>
+                          <span className="text-xs font-bold text-slate-900">{tx.studentName || 'Registered Student'}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500 font-medium">Student Mobile:</span>
+                          <span className="text-xs font-black font-mono text-slate-900">
+                            📱 +91 {tx.studentMobile || 'Not provided'}
+                          </span>
+                        </div>
+
+                        {tx.studentMobile && (
+                          <div className="flex items-center space-x-2 pt-1 border-t border-slate-100">
+                            <a
+                              href={`tel:${tx.studentMobile}`}
+                              className="flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition-colors"
+                            >
+                              <Phone className="w-3 h-3 text-emerald-600" />
+                              <span>Call Student</span>
+                            </a>
+                            <a
+                              href={`https://wa.me/91${tx.studentMobile}?text=${encodeURIComponent(
+                                `Hello ${tx.studentName || 'Student'}, this is Director Uma Shukla from Mantra Classes regarding your payment of ₹${tx.amount} (UTR: ${tx.utrNumber}).`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-[11px] font-bold shadow-2xs transition-colors"
+                            >
+                              <span>WhatsApp</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* UTR Reference Row with 1-Click Copy */}
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Bank UTR / Transaction No:</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(tx.utrNumber);
+                              setCopiedUtrId(tx.id);
+                              setTimeout(() => setCopiedUtrId(null), 2000);
+                            }}
+                            className="flex items-center space-x-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+                          >
+                            {copiedUtrId === tx.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedUtrId === tx.id ? 'Copied' : 'Copy UTR'}</span>
+                          </button>
+                        </div>
+                        <div className="font-mono text-sm font-black text-indigo-950 tracking-wider select-all">
+                          {tx.utrNumber}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Cross-check in SBI / PhonePe / Paytm passbook for payee: <b>8707794159@ptyes</b>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons for Director */}
+                    <div className="pt-2 border-t border-slate-100">
+                      {isPending ? (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              authorizeStudentPayment(tx.id);
+                              setSuccessToast(`Payment authorized! ${tx.studentName || 'Student'} has been granted full module access.`);
+                            }}
+                            className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>✓ Authorize & Activate Module</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const reason = prompt('Reason for rejecting UTR (e.g. UTR not matched in bank statement):', 'UTR not matched in bank statement');
+                              if (reason) {
+                                rejectStudentPayment(tx.id, reason);
+                                setSuccessToast('Payment rejected and student notified.');
+                              }
+                            }}
+                            className="flex items-center space-x-1 py-2.5 px-3 rounded-xl border border-rose-300 hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                          <span>
+                            {isSuccess ? `Authorized by: ${tx.authorizedBy || 'Director Uma Shukla'}` : `Rejected: ${tx.authorizedBy || 'Admin'}`}
+                          </span>
+                          {tx.authorizedAt && (
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(tx.authorizedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })()}
