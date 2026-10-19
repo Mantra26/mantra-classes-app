@@ -28,11 +28,11 @@ export const AssignedTestsView: React.FC = () => {
     user,
     testAttempts,
     openPaymentModal,
-    currentRole
+    currentRole,
+    hasUsedDemo
   } = useApp();
 
   const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
-  const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
 
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'evaluated'>('pending');
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);

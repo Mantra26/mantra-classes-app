@@ -41,7 +41,9 @@ const STORAGE_KEYS = {
   FACULTY_TESTS: 'mantra_faculty_tests',
   STUDENT_SUBMISSIONS: 'mantra_student_submissions',
   FACULTY_MEMBERS: 'mantra_faculty_members',
-  ACTIVE_FACULTY_ID: 'mantra_active_faculty_id'
+  ACTIVE_FACULTY_ID: 'mantra_active_faculty_id',
+  DEVICE_DEMO_TRACK: 'mantra_device_demo_track',
+  DEMO_USED_MOBILES: 'mantra_demo_used_mobiles'
 };
 
 export const SEED_FACULTY_MEMBERS: FacultyMember[] = [
@@ -351,11 +353,107 @@ export const storage = {
     return updated;
   },
 
-  loginStudent(student: UserProfile): void {
-    const userToSave = { ...student, isLoggedIn: true };
+  getDeviceDemoInfo(): { used: boolean; originalMobile?: string; originalName?: string; usedAt?: string } {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DEVICE_DEMO_TRACK);
+      if (data) {
+        return JSON.parse(data);
+      }
+      return { used: false };
+    } catch {
+      return { used: false };
+    }
+  },
+
+  isDeviceDemoUsed(): boolean {
+    return this.getDeviceDemoInfo().used;
+  },
+
+  getDemoUsedMobiles(): string[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DEMO_USED_MOBILES);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  isMobileDemoUsed(mobile: string): boolean {
+    const clean = (mobile || '').replace(/\D/g, '');
+    if (!clean) return false;
+    const list = this.getDemoUsedMobiles();
+    if (list.includes(clean)) return true;
+    const registered = this.getRegisteredStudents();
+    const stu = registered.find(s => s.mobileNumber === clean);
+    return !!stu?.demoMockTestTaken;
+  },
+
+  recordDemoTestUsed(mobile?: string, name?: string): void {
+    const clean = (mobile || '').replace(/\D/g, '');
+    // 1. Mark device trial as used
+    const currentDevice = this.getDeviceDemoInfo();
+    if (!currentDevice.used) {
+      const deviceRecord = {
+        used: true,
+        originalMobile: clean || 'unknown',
+        originalName: name || 'Student',
+        usedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.DEVICE_DEMO_TRACK, JSON.stringify(deviceRecord));
+    }
+
+    // 2. Mark mobile in demo used list
+    if (clean) {
+      const list = this.getDemoUsedMobiles();
+      if (!list.includes(clean)) {
+        list.push(clean);
+        localStorage.setItem(STORAGE_KEYS.DEMO_USED_MOBILES, JSON.stringify(list));
+      }
+
+      // Also persist to registered student profile
+      const registered = this.getRegisteredStudents();
+      const idx = registered.findIndex(s => s.mobileNumber === clean);
+      if (idx >= 0) {
+        registered[idx].demoMockTestTaken = true;
+        localStorage.setItem(STORAGE_KEYS.REGISTERED_STUDENTS, JSON.stringify(registered));
+      }
+
+      // Also update currently active user if matches
+      const current = this.getUser();
+      if (current && current.mobileNumber === clean) {
+        this.saveUser({ ...current, demoMockTestTaken: true });
+      }
+    }
+  },
+
+  loginStudent(student: UserProfile): UserProfile {
+    const registered = this.getRegisteredStudents();
+    const cleanMobile = (student.mobileNumber || '').replace(/\D/g, '');
+    const existing = registered.find(s => s.mobileNumber === cleanMobile || (s.id && s.id === student.id));
+    const deviceDemoInfo = this.getDeviceDemoInfo();
+    const isDeviceUsed = deviceDemoInfo.used;
+    const isMobileUsed = this.isMobileDemoUsed(cleanMobile);
+
+    // If student already took demo, or mobile is recorded as used, or device used: demo test is permanently locked
+    const demoAlreadyTaken = !!(existing?.demoMockTestTaken || isMobileUsed || isDeviceUsed || student.demoMockTestTaken);
+
+    const userToSave: UserProfile = {
+      ...(existing || {}),
+      ...student,
+      id: existing?.id || student.id || `stu-${cleanMobile.slice(-4) || Date.now()}`,
+      name: existing?.name || student.name,
+      mobileNumber: cleanMobile,
+      demoMockTestTaken: demoAlreadyTaken,
+      isProMember: existing?.isProMember || student.isProMember || false,
+      paymentStatus: existing?.paymentStatus === 'authorized' ? 'authorized' : (student.paymentStatus || existing?.paymentStatus || 'none'),
+      totalTestsTaken: Math.max(existing?.totalTestsTaken || 0, student.totalTestsTaken || 0),
+      isLoggedIn: true
+    };
+
     this.saveUser(userToSave);
     this.saveRole('student');
     this.saveRegisteredStudent(userToSave);
+    return userToSave;
   },
 
   logoutStudent(): void {

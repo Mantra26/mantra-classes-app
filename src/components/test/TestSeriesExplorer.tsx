@@ -29,11 +29,11 @@ export const TestSeriesExplorer: React.FC = () => {
     activeBoard,
     filteredSubjects,
     filteredChapters: chaptersByGrade,
-    currentRole
+    currentRole,
+    hasUsedDemo
   } = useApp();
 
   const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
-  const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
 
   const [activeTab, setActiveTab] = useState<'subject-wise' | 'lesson-wise'>('subject-wise');
   const [filterSubjectId, setFilterSubjectId] = useState<SubjectId | 'all'>('all');

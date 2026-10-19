@@ -91,6 +91,7 @@ interface AppContextType {
   facultyPin: string;
   updateFacultyPin: (newPin: string) => boolean;
   registeredStudents: UserProfile[];
+  hasUsedDemo: boolean;
 
   // Data & Models
   user: UserProfile;
@@ -438,6 +439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const submitStudentTest = (submission: StudentTestSubmission) => {
     const updated = storage.saveStudentSubmission(submission);
     setStudentSubmissions(updated);
+    storage.recordDemoTestUsed(user.mobileNumber, user.name);
     updateUser({
       demoMockTestTaken: true,
       totalTestsTaken: (user.totalTestsTaken || 0) + 1
@@ -503,16 +505,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginStudent = (studentData: Partial<UserProfile>) => {
-    const updatedUser: UserProfile = {
+    const cleanMobile = (studentData.mobileNumber || user.mobileNumber || '').replace(/\D/g, '');
+    const studentToSave: UserProfile = {
       ...user,
       ...studentData,
-      id: studentData.id || `stu-${studentData.mobileNumber?.slice(-4) || Date.now()}`,
+      mobileNumber: cleanMobile,
+      id: studentData.id || (cleanMobile ? `stu-${cleanMobile.slice(-4)}` : `stu-${Date.now()}`),
       isLoggedIn: true,
       joinedAt: user.joinedAt || new Date().toISOString()
     };
-    storage.loginStudent(updatedUser);
+    const savedUser = storage.loginStudent(studentToSave);
     setRegisteredStudents(storage.getRegisteredStudents());
-    setUser(updatedUser);
+    setUser(savedUser);
     setCurrentRole('student');
     storage.saveRole('student');
     setView('dashboard');
@@ -719,6 +723,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return arr;
   };
 
+  // Authoritative trial check: checks user profile, device storage, mobile registry, and attempts
+  const hasUsedDemo = useMemo(() => {
+    if (currentRole === 'admin') return false;
+    return !!(
+      user.demoMockTestTaken ||
+      storage.isDeviceDemoUsed() ||
+      storage.isMobileDemoUsed(user.mobileNumber || '') ||
+      (testAttempts && testAttempts.length >= 1)
+    );
+  }, [user.demoMockTestTaken, user.mobileNumber, testAttempts, currentRole]);
+
   // Helper to construct questions for tests
   const initTestSession = (
     title: string,
@@ -729,7 +744,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     chapterIds: string[] = []
   ) => {
     const isAuthorized = user.isProMember || user.paymentStatus === 'authorized';
-    const hasUsedDemo = user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1);
 
     if (currentRole === 'student' && hasUsedDemo && !isAuthorized) {
       if (user.paymentStatus === 'pending_authorization') {
@@ -1046,6 +1060,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedAttempts = storage.saveAttempt(newAttempt);
     setTestAttempts(updatedAttempts);
 
+    // Record demo mock test usage across device and mobile registry
+    storage.recordDemoTestUsed(user.mobileNumber, user.name);
+
     // Update user stats
     const totalTaken = user.totalTestsTaken + 1;
     const avgScore = Math.round(((user.averageScorePercentage * user.totalTestsTaken + percentage) / totalTaken) * 10) / 10;
@@ -1254,6 +1271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         facultyPin,
         updateFacultyPin,
         registeredStudents,
+        hasUsedDemo,
         selectedSubjectId,
         setSelectedSubjectId,
         selectedChapterId,

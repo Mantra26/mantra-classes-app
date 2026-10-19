@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { storage } from '../../services/storage';
+import { validateIndianMobile } from '../../utils/mobileValidator';
 import { EducationBoard, GradeLevel, UserProfile } from '../../types';
 import {
   GraduationCap,
-  Phone,
   User,
   School,
   Sparkles,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  Lock,
-  BookOpen
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 
 export const StudentAuthModal: React.FC = () => {
-  const { user, loginStudent, activeBoard, setActiveBoard, activeGrade, setActiveGrade } = useApp();
+  const { user, loginStudent, activeBoard, setActiveBoard, activeGrade, setActiveGrade, registeredStudents } = useApp();
 
-  // If already logged in, do not render modal
+  // If already logged in with verified mobile, do not render modal
   if (user?.isLoggedIn && user?.mobileNumber) return null;
 
   const [step, setStep] = useState<'details' | 'otp'>('details');
@@ -30,22 +31,53 @@ export const StudentAuthModal: React.FC = () => {
   const [generatedOtp, setGeneratedOtp] = useState('1234');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Real-time strict Indian mobile validation
+  const mobileValidation = useMemo(() => {
+    return validateIndianMobile(mobileNumber);
+  }, [mobileNumber]);
+
+  // Check if mobile number belongs to an already registered student
+  const existingStudentRecord = useMemo(() => {
+    if (!mobileValidation.isValid) return null;
+    return registeredStudents.find(s => s.mobileNumber === mobileValidation.cleanMobile);
+  }, [mobileValidation, registeredStudents]);
+
+  // Check persistent device-level demo test status
+  const deviceDemoInfo = useMemo(() => {
+    return storage.getDeviceDemoInfo();
+  }, []);
+
+  // When returning student enters mobile number, auto-populate verified details
+  useEffect(() => {
+    if (existingStudentRecord) {
+      setFullName(existingStudentRecord.name);
+      if (existingStudentRecord.schoolName) {
+        setSchoolName(existingStudentRecord.schoolName);
+      }
+      if (existingStudentRecord.board) {
+        setSelectedBoard(existingStudentRecord.board);
+      }
+      if (existingStudentRecord.gradeLevel) {
+        setSelectedGrade(existingStudentRecord.gradeLevel);
+      }
+    }
+  }, [existingStudentRecord]);
+
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!fullName.trim()) {
-      setErrorMsg('Please enter your full name');
+    if (!fullName.trim() || fullName.trim().length < 3) {
+      setErrorMsg('Please enter your full real name (at least 3 characters).');
       return;
     }
 
-    const cleanMobile = mobileNumber.replace(/\D/g, '');
-    if (cleanMobile.length !== 10) {
-      setErrorMsg('Please enter a valid 10-digit Indian mobile number');
+    if (!mobileValidation.isValid) {
+      setErrorMsg(mobileValidation.message || 'Please enter a genuine, functional 10-digit Indian mobile number.');
       return;
     }
 
-    // Generate simulated 4-digit OTP
+    // Generate random 4-digit OTP
     const mockOtp = String(Math.floor(1000 + Math.random() * 9000));
     setGeneratedOtp(mockOtp);
     setStep('otp');
@@ -58,32 +90,45 @@ export const StudentAuthModal: React.FC = () => {
       return;
     }
 
-    const cleanMobile = mobileNumber.replace(/\D/g, '');
+    const cleanMobile = mobileValidation.cleanMobile;
+
+    // Check if this mobile or this device has already redeemed a demo test
+    const isMobileUsed = storage.isMobileDemoUsed(cleanMobile) || !!existingStudentRecord?.demoMockTestTaken;
+    const isDeviceUsed = storage.isDeviceDemoUsed();
+    const demoAlreadyTaken = isMobileUsed || isDeviceUsed;
+
     const studentProfile: Partial<UserProfile> = {
-      id: `stu-${cleanMobile.slice(-4) || Date.now()}`,
-      name: fullName.trim(),
+      ...(existingStudentRecord || {}),
+      id: existingStudentRecord?.id || `stu-${cleanMobile.slice(-4) || Date.now()}`,
+      name: (existingStudentRecord?.name || fullName).trim(),
       mobileNumber: cleanMobile,
       grade: selectedGrade === '11' || selectedGrade === '12'
         ? `Class ${selectedGrade} Commerce (${selectedBoard})`
         : `Grade ${selectedGrade} (${selectedBoard})`,
       gradeLevel: selectedGrade,
       board: selectedBoard,
-      schoolName: schoolName.trim() || 'Mantra Classes Student',
+      schoolName: (existingStudentRecord?.schoolName || schoolName).trim() || 'Mantra Classes Student',
       isLoggedIn: true,
-      isProMember: false,
-      demoMockTestTaken: false,
-      paymentStatus: 'none',
-      streakDays: 1,
-      coins: 50,
-      totalTestsTaken: 0,
-      averageScorePercentage: 0,
-      joinedAt: new Date().toISOString()
+      demoMockTestTaken: demoAlreadyTaken,
+      isProMember: existingStudentRecord?.isProMember || false,
+      paymentStatus: existingStudentRecord?.paymentStatus || 'none',
+      streakDays: existingStudentRecord?.streakDays || 1,
+      coins: existingStudentRecord?.coins || 50,
+      totalTestsTaken: existingStudentRecord?.totalTestsTaken || 0,
+      averageScorePercentage: existingStudentRecord?.averageScorePercentage || 0,
+      joinedAt: existingStudentRecord?.joinedAt || new Date().toISOString()
     };
 
     setActiveBoard(selectedBoard);
     setActiveGrade(selectedGrade);
     loginStudent(studentProfile as UserProfile);
   };
+
+  const hasDemoBeenUsed = !!(
+    existingStudentRecord?.demoMockTestTaken ||
+    storage.isMobileDemoUsed(mobileValidation.cleanMobile) ||
+    deviceDemoInfo.used
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
@@ -105,15 +150,16 @@ export const StudentAuthModal: React.FC = () => {
           </div>
 
           <p className="text-xs text-indigo-100 max-w-md leading-relaxed">
-            Personalized ICSE & CBSE learning desk. Enter your mobile number to access interactive chapters, faculty-reviewed tests, and doubt clearing.
+            Personalized ICSE & CBSE learning desk. Enter your functional Indian mobile number to access interactive chapters, diagnostic tests, and personalized mentorship.
           </p>
         </div>
 
         {/* Content Body */}
         <div className="p-6 sm:p-7 space-y-5">
           {errorMsg && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold animate-shake">
-              {errorMsg}
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center space-x-2 animate-shake">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
@@ -137,26 +183,95 @@ export const StudentAuthModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  10-Digit Mobile Number (Login ID) <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                    10-Digit Mobile Number (Login ID) <span className="text-rose-500">*</span>
+                  </label>
+                  {mobileNumber && (
+                    <span
+                      className={`text-[11px] font-bold ${
+                        mobileValidation.isValid
+                          ? 'text-emerald-600'
+                          : mobileValidation.status === 'invalid_start' ||
+                            mobileValidation.status === 'dummy_number'
+                          ? 'text-rose-600'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {mobileValidation.message}
+                    </span>
+                  )}
+                </div>
+
                 <div className="relative flex">
-                  <span className="inline-flex items-center px-3.5 rounded-l-2xl border border-r-0 border-slate-300 bg-slate-50 text-slate-600 text-xs font-bold">
-                    +91
+                  <span className="inline-flex items-center px-3.5 rounded-l-2xl border border-r-0 border-slate-300 bg-slate-50 text-slate-700 text-xs font-black">
+                    🇮🇳 +91
                   </span>
                   <input
                     type="tel"
                     required
                     maxLength={10}
                     value={mobileNumber}
-                    onChange={e => setMobileNumber(e.target.value.replace(/\D/g, ''))}
-                    placeholder="9876543210"
-                    className="w-full pl-3.5 pr-4 py-3 rounded-r-2xl border border-slate-300 text-sm font-mono font-bold focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 transition-all text-slate-900"
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setMobileNumber(val);
+                      setErrorMsg('');
+                    }}
+                    placeholder="9812345678"
+                    className={`w-full pl-3.5 pr-10 py-3 rounded-r-2xl border text-sm font-mono font-bold focus:outline-none transition-all text-slate-900 ${
+                      mobileValidation.isValid
+                        ? 'border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-400/20'
+                        : mobileValidation.status === 'invalid_start' ||
+                          mobileValidation.status === 'dummy_number'
+                        ? 'border-rose-400 bg-rose-50/30 ring-2 ring-rose-400/20'
+                        : 'border-slate-300 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100'
+                    }`}
                   />
+                  <div className="absolute right-3 top-3.5 flex items-center pointer-events-none">
+                    {mobileValidation.isValid ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-in zoom-in-75 duration-150" />
+                    ) : mobileValidation.status === 'invalid_start' ||
+                      mobileValidation.status === 'dummy_number' ? (
+                      <AlertTriangle className="w-5 h-5 text-rose-500" />
+                    ) : null}
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Your registered mobile number will be your permanent Student ID.
-                </p>
+
+                {/* Real-time Validation & Restriction Warnings */}
+                {mobileValidation.status === 'invalid_start' && (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1.5 flex items-center space-x-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Indian mobile numbers must start with 6, 7, 8, or 9.</span>
+                  </p>
+                )}
+                {mobileValidation.status === 'dummy_number' && (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1.5 flex items-center space-x-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{mobileValidation.message}</span>
+                  </p>
+                )}
+
+                {/* Returning Scholar Auto-Detection */}
+                {existingStudentRecord && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-950 font-semibold flex items-center space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>
+                      Registered Scholar Recognized: <b>{existingStudentRecord.name}</b> ({existingStudentRecord.grade || `Grade ${existingStudentRecord.gradeLevel}`})
+                    </span>
+                  </div>
+                )}
+
+                {/* Device-Level Trial Protection Banner */}
+                {!existingStudentRecord && deviceDemoInfo.used && mobileValidation.isValid && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950 font-semibold flex items-start space-x-2">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span>
+                        Notice: 1 Free Demo Test has already been redeemed on this browser. Additional tests require Director Uma Shukla's module authorization or pass upgrade.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -220,7 +335,8 @@ export const StudentAuthModal: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
+                disabled={!mobileValidation.isValid || fullName.trim().length < 3}
+                className="w-full py-3.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-98 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
               >
                 <span>Continue & Verify Mobile OTP</span>
                 <ArrowRight className="w-4 h-4" />
@@ -231,7 +347,7 @@ export const StudentAuthModal: React.FC = () => {
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
                 <div className="flex items-center space-x-2 font-bold text-xs">
                   <ShieldCheck className="w-4 h-4 text-amber-600" />
-                  <span>Simulated OTP Code</span>
+                  <span>Simulated OTP Verification</span>
                 </div>
                 <div className="text-xs text-amber-800">
                   Verification code sent to <strong>+91 {mobileNumber}</strong>:
@@ -283,10 +399,29 @@ export const StudentAuthModal: React.FC = () => {
             </form>
           )}
 
-          {/* Trial Benefit Highlight */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-center space-x-2 text-xs text-slate-600 bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>Includes <strong>1 Free Demo Mock Test</strong> upon mobile login!</span>
+          {/* Trial Benefit / Restriction Status Highlight */}
+          <div
+            className={`pt-3 border-t border-slate-100 flex items-center justify-center space-x-2 text-xs p-2.5 rounded-2xl border ${
+              hasDemoBeenUsed
+                ? 'bg-slate-50 border-slate-200 text-slate-600'
+                : 'bg-amber-50/70 border-amber-200 text-amber-950 font-semibold'
+            }`}
+          >
+            {hasDemoBeenUsed ? (
+              <>
+                <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>
+                  1 Free Demo Mock Test completed. Additional tests require module activation.
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>
+                  Includes <strong>1 Free Demo Mock Test</strong> upon mobile login!
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

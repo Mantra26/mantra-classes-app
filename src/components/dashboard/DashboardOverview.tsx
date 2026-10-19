@@ -43,13 +43,13 @@ export const DashboardOverview: React.FC = () => {
     currentRole,
     setIsFlashcardsOpen,
     setIsBlitzOpen,
-    setIsSearchOpen
+    setIsSearchOpen,
+    hasUsedDemo
   } = useApp();
 
   const scholarLevel = getScholarLevel(user.xp || 680);
 
   const isAuthorized = currentRole === 'admin' || user.isProMember || user.paymentStatus === 'authorized';
-  const hasUsedDemo = currentRole !== 'admin' && (user.demoMockTestTaken || (testAttempts && testAttempts.length >= 1));
 
   return (
     <div className="space-y-6">
