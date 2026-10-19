@@ -294,7 +294,7 @@ export const storage = {
   getRole(): UserRole {
     try {
       const r = localStorage.getItem(STORAGE_KEYS.ROLE);
-      return (r === 'admin' || r === 'student') ? r : 'student';
+      return (r === 'admin' || r === 'faculty' || r === 'student') ? r : 'student';
     } catch {
       return 'student';
     }
