@@ -99,6 +99,7 @@ export const otpService = {
     smsUrl: string;
     message: string;
     isGatewayActive: boolean;
+    code?: string;
   }> {
     const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
     const existing = this.getActiveSession(cleanMobile);
@@ -114,7 +115,8 @@ export const otpService = {
           whatsappUrl: this.buildWhatsAppUrl(cleanMobile, existing.code, studentName),
           smsUrl: this.buildSmsUrl(cleanMobile, existing.code),
           message: `Please wait ${cooldown}s before requesting a new OTP.`,
-          isGatewayActive: false
+          isGatewayActive: false,
+          code: existing.code
         };
       }
     }
@@ -184,7 +186,8 @@ export const otpService = {
       studentName: session.studentName,
       timestamp: new Date().toISOString(),
       channel,
-      status: 'dispatched'
+      status: 'dispatched',
+      code
     });
 
     const whatsappUrl = this.buildWhatsAppUrl(cleanMobile, code, studentName);
@@ -193,10 +196,11 @@ export const otpService = {
     return {
       success: true,
       maskedMobile: this.maskMobile(cleanMobile),
+      code,
       expiresAt: session.expiresAt,
       whatsappUrl,
       smsUrl,
-      message: `OTP sent to ${this.maskMobile(cleanMobile)}. Check your phone.`,
+      message: `OTP generated for ${this.maskMobile(cleanMobile)}.`,
       isGatewayActive
     };
   },

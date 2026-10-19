@@ -157,6 +157,12 @@ export const StudentAuthModal: React.FC = () => {
       setOtpInput('');
       setOtpNotice(res.message);
       setStudentStep('otp');
+      // Proactively launch WhatsApp in new tab so recipient receives message directly
+      try {
+        window.open(res.whatsappUrl, '_blank');
+      } catch (err) {
+        console.warn('Popup blocked, button available on screen', err);
+      }
     } catch {
       setStudentError('Unable to dispatch OTP. Please check your internet connection.');
     } finally {
@@ -176,6 +182,11 @@ export const StudentAuthModal: React.FC = () => {
         setResendCooldown(30);
         setExpiryCountdown(300);
         setOtpNotice('New verification code dispatched to your phone!');
+        try {
+          window.open(res.whatsappUrl, '_blank');
+        } catch (err) {
+          console.warn('Popup blocked', err);
+        }
       } else {
         setStudentError(res.message);
       }
@@ -600,28 +611,39 @@ export const StudentAuthModal: React.FC = () => {
                     )}
 
                     {/* Direct Mobile Retrieval Actions */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-2 pt-1">
                       <a
                         href={whatsappUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center space-x-2 shadow-sm transition-all active:scale-95"
+                        className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-md transition-all active:scale-95 ring-2 ring-emerald-400/40"
                       >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Receive via WhatsApp</span>
+                        <MessageCircle className="w-5 h-5" />
+                        <span>📲 Tap Here to Open WhatsApp & View OTP</span>
                       </a>
 
-                      <a
-                        href={smsUrl}
-                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs flex items-center justify-center space-x-2 shadow-sm transition-all active:scale-95"
-                      >
-                        <Smartphone className="w-4 h-4" />
-                        <span>Open Native SMS App</span>
-                      </a>
+                      <div className="flex items-center space-x-2">
+                        <a
+                          href={smsUrl}
+                          className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs flex items-center justify-center space-x-1.5 transition-all"
+                        >
+                          <Smartphone className="w-3.5 h-3.5" />
+                          <span>Open SMS App</span>
+                        </a>
+
+                        <a
+                          href={`https://wa.me/918707794159?text=${encodeURIComponent(`Hello Director Uma Shukla, I am trying to log in with mobile +91 ${mobileValidation.cleanMobile} for Mantra Classes. Please assist with my OTP.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs flex items-center justify-center space-x-1.5 transition-all text-center"
+                        >
+                          <span>WhatsApp Uma Ma'am</span>
+                        </a>
+                      </div>
                     </div>
 
                     <p className="text-[11px] text-slate-600 leading-tight">
-                      Please check the message received on your mobile device and enter the 6-digit code below.
+                      Tip: Clicking the green button opens WhatsApp with your pre-filled verification code from Mantra Classes.
                     </p>
                   </div>
 

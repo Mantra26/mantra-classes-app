@@ -119,6 +119,7 @@ export const AdminPanel: React.FC = () => {
   const [testSmsStatus, setTestSmsStatus] = useState('');
   const [showSmsConfigSaved, setShowSmsConfigSaved] = useState(false);
   const [isSendingTestOtp, setIsSendingTestOtp] = useState(false);
+  const [lastTestOtp, setLastTestOtp] = useState<{ code: string; mobile: string; whatsappUrl: string; smsUrl: string } | null>(null);
 
   // Student Directory State
   const [studentSearch, setStudentSearch] = useState('');
@@ -583,7 +584,19 @@ export const AdminPanel: React.FC = () => {
     try {
       const res = await otpService.sendOtp(clean, 'Director Uma Shukla (Test)');
       setOtpLogs(storage.getOtpLogs());
-      setTestSmsStatus(`✓ Test code dispatched to ${res.maskedMobile} via ${res.isGatewayActive ? 'Automated SMS Gateway' : 'WhatsApp / Mobile SMS'}.`);
+      setLastTestOtp({
+        code: res.code || '',
+        mobile: clean,
+        whatsappUrl: res.whatsappUrl,
+        smsUrl: res.smsUrl
+      });
+      // Proactively open WhatsApp Web / App so message arrives directly
+      try {
+        window.open(res.whatsappUrl, '_blank');
+      } catch (err) {
+        console.warn('Popup blocked, button available below', err);
+      }
+      setTestSmsStatus(`✓ OTP Code: ${res.code} generated for +91 ${clean}. Click the green button below to send/view in WhatsApp.`);
     } catch {
       setTestSmsStatus('Failed to send test OTP. Check network connectivity.');
     } finally {
@@ -1889,6 +1902,34 @@ export const AdminPanel: React.FC = () => {
                   {testSmsStatus}
                 </div>
               )}
+
+              {lastTestOtp && (
+                <div className="p-3.5 rounded-2xl bg-white border-2 border-emerald-500 shadow-sm space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700">Generated OTP for +91 {lastTestOtp.mobile}:</span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      Valid 5 Mins
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xl font-black font-mono tracking-widest text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-300">
+                      {lastTestOtp.code}
+                    </div>
+                    <a
+                      href={lastTestOtp.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition-all"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Open in WhatsApp</span>
+                    </a>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Click "Open in WhatsApp" to deliver this message directly to WhatsApp Web/App, or use code <strong>{lastTestOtp.code}</strong>.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1915,6 +1956,7 @@ export const AdminPanel: React.FC = () => {
                   <tr>
                     <th className="py-2.5 px-3">Recipient Mobile</th>
                     <th className="py-2.5 px-3">Student Name</th>
+                    <th className="py-2.5 px-3">OTP Code</th>
                     <th className="py-2.5 px-3">Channel</th>
                     <th className="py-2.5 px-3">Status</th>
                     <th className="py-2.5 px-3 text-right">Timestamp</th>
@@ -1928,6 +1970,11 @@ export const AdminPanel: React.FC = () => {
                       </td>
                       <td className="py-2 px-3 text-slate-700">
                         {log.studentName}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          {log.code || '123456'}
+                        </span>
                       </td>
                       <td className="py-2 px-3">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-800">

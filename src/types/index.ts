@@ -376,5 +376,6 @@ export interface OtpDispatchLog {
   timestamp: string;
   channel: 'whatsapp' | 'sms_gateway' | 'device_sms' | 'admin_bypass';
   status: 'dispatched' | 'verified' | 'expired' | 'failed';
+  code?: string;
 }
 
