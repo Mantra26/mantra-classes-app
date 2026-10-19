@@ -361,3 +361,20 @@ export interface StudentTestSubmission {
   evaluatedAt?: string;
 }
 
+export interface SmsGatewayConfig {
+  enabled: boolean;
+  provider: 'whatsapp_direct' | 'fast2sms' | 'custom_webhook';
+  apiKey?: string;
+  webhookUrl?: string;
+  senderId?: string;
+}
+
+export interface OtpDispatchLog {
+  id: string;
+  maskedMobile: string;
+  studentName: string;
+  timestamp: string;
+  channel: 'whatsapp' | 'sms_gateway' | 'device_sms' | 'admin_bypass';
+  status: 'dispatched' | 'verified' | 'expired' | 'failed';
+}
+

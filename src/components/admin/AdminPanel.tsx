@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ICSE_SUBJECTS } from '../../data/icseCurriculum';
 import { ICSE_QUESTION_BANK } from '../../data/questionBank';
-import { ChapterResource, SubjectId, PptSlide, GradeLevel, FacultyTestPaper, StudentTestSubmission, Chapter } from '../../types';
+import { ChapterResource, SubjectId, PptSlide, GradeLevel, FacultyTestPaper, StudentTestSubmission, Chapter, SmsGatewayConfig, OtpDispatchLog } from '../../types';
+import { storage } from '../../services/storage';
+import { otpService } from '../../services/otpService';
 import { PptSlideViewerModal } from '../chapters/PptSlideViewerModal';
 import { ChapterEditModal } from '../chapters/ChapterEditModal';
 import {
@@ -41,7 +43,9 @@ import {
   XCircle,
   AlertCircle,
   Edit3,
-  Unlock
+  Unlock,
+  Smartphone,
+  MessageCircle
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -107,6 +111,14 @@ export const AdminPanel: React.FC = () => {
   const [showFacultyPinForm, setShowFacultyPinForm] = useState(false);
   const [showFacultyCurrentPin, setShowFacultyCurrentPin] = useState(false);
   const [facultyPinError, setFacultyPinError] = useState('');
+
+  // SMS & OTP Gateway Management State
+  const [smsGatewayConfig, setSmsGatewayConfig] = useState<SmsGatewayConfig>(() => storage.getSmsGatewayConfig());
+  const [otpLogs, setOtpLogs] = useState<OtpDispatchLog[]>(() => storage.getOtpLogs());
+  const [testSmsMobile, setTestSmsMobile] = useState('');
+  const [testSmsStatus, setTestSmsStatus] = useState('');
+  const [showSmsConfigSaved, setShowSmsConfigSaved] = useState(false);
+  const [isSendingTestOtp, setIsSendingTestOtp] = useState(false);
 
   // Student Directory State
   const [studentSearch, setStudentSearch] = useState('');
@@ -546,6 +558,36 @@ export const AdminPanel: React.FC = () => {
       setTimeout(() => setSuccessToast(''), 4000);
     } else {
       setFacultyPinError('Failed to update Faculty PIN.');
+    }
+  };
+
+  // Handle SMS Gateway Config Update
+  const handleSaveSmsConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    storage.saveSmsGatewayConfig(smsGatewayConfig);
+    setShowSmsConfigSaved(true);
+    setSuccessToast('SMS Gateway settings updated successfully!');
+    setTimeout(() => setShowSmsConfigSaved(false), 4000);
+    setTimeout(() => setSuccessToast(''), 4000);
+  };
+
+  // Handle Send Test OTP
+  const handleSendTestOtp = async () => {
+    setTestSmsStatus('');
+    const clean = testSmsMobile.replace(/\D/g, '');
+    if (clean.length !== 10) {
+      setTestSmsStatus('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    setIsSendingTestOtp(true);
+    try {
+      const res = await otpService.sendOtp(clean, 'Director Uma Shukla (Test)');
+      setOtpLogs(storage.getOtpLogs());
+      setTestSmsStatus(`✓ Test code dispatched to ${res.maskedMobile} via ${res.isGatewayActive ? 'Automated SMS Gateway' : 'WhatsApp / Mobile SMS'}.`);
+    } catch {
+      setTestSmsStatus('Failed to send test OTP. Check network connectivity.');
+    } finally {
+      setIsSendingTestOtp(false);
     }
   };
 
@@ -1715,6 +1757,207 @@ export const AdminPanel: React.FC = () => {
               </form>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ================= SECTION: SMS & WHATSAPP MOBILE OTP GATEWAY ================= */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  SMS & WhatsApp Mobile OTP Gateway
+                </h3>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Active
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Dispatches real verification codes directly to students' mobile phones upon login. Plaintext codes and auto-fill buttons are permanently blocked on student screens.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Left: Gateway Configuration Form */}
+          <form onSubmit={handleSaveSmsConfig} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                Gateway Dispatch Engine
+              </span>
+              {showSmsConfigSaved && (
+                <span className="text-emerald-600 font-bold flex items-center space-x-1 animate-fadeIn">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Settings Saved</span>
+                </span>
+              )}
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-600 mb-1">Dispatch Method:</label>
+              <select
+                value={smsGatewayConfig.provider}
+                onChange={e => setSmsGatewayConfig({ ...smsGatewayConfig, provider: e.target.value as any })}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800"
+              >
+                <option value="whatsapp_direct">WhatsApp Direct & Device SMS (Recommended - 100% Free & Instant)</option>
+                <option value="fast2sms">Fast2SMS Indian Gateway (HTTP Automated Dispatch)</option>
+                <option value="custom_webhook">Custom Webhook API (Cloudflare / AWS / Firebase)</option>
+              </select>
+            </div>
+
+            {smsGatewayConfig.provider === 'fast2sms' && (
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-600">Fast2SMS Authorization API Key:</label>
+                <input
+                  type="password"
+                  value={smsGatewayConfig.apiKey || ''}
+                  onChange={e => setSmsGatewayConfig({ ...smsGatewayConfig, apiKey: e.target.value })}
+                  placeholder="Paste Fast2SMS API Key"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-mono text-xs text-slate-800"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Calls Fast2SMS OTP route to deliver direct cellular SMS messages in India.
+                </p>
+              </div>
+            )}
+
+            {smsGatewayConfig.provider === 'custom_webhook' && (
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-600">Webhook Endpoint URL:</label>
+                <input
+                  type="url"
+                  value={smsGatewayConfig.webhookUrl || ''}
+                  onChange={e => setSmsGatewayConfig({ ...smsGatewayConfig, webhookUrl: e.target.value })}
+                  placeholder="https://api.yourdomain.com/send-sms"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-mono text-xs text-slate-800"
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors"
+            >
+              Update Gateway Settings
+            </button>
+          </form>
+
+          {/* Right: Live Test Dispatch Tool */}
+          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3.5 text-xs">
+            <div className="flex items-center space-x-2 border-b border-emerald-200 pb-2">
+              <MessageCircle className="w-4 h-4 text-emerald-700" />
+              <span className="font-bold text-emerald-950 uppercase tracking-wider text-[11px]">
+                Live Mobile OTP Test Dispatch
+              </span>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed text-[11px]">
+              Verify that mobile OTP dispatch delivers properly to your personal phone before classroom rollout:
+            </p>
+
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <span className="inline-flex items-center px-3 rounded-xl border border-emerald-300 bg-white text-slate-700 font-mono font-bold text-xs">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={testSmsMobile}
+                  onChange={e => setTestSmsMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="9812345678"
+                  className="flex-1 px-3 py-2 rounded-xl border border-emerald-300 bg-white font-mono font-bold text-xs text-slate-900"
+                />
+                <button
+                  type="button"
+                  disabled={isSendingTestOtp || testSmsMobile.length !== 10}
+                  onClick={handleSendTestOtp}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs shadow-sm transition-all shrink-0"
+                >
+                  {isSendingTestOtp ? 'Sending...' : 'Send Test OTP'}
+                </button>
+              </div>
+
+              {testSmsStatus && (
+                <div className="p-2.5 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-xs font-semibold animate-fadeIn">
+                  {testSmsStatus}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Live OTP Dispatch Audit Logs */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">
+              Recent Verification Dispatches & Audit Log
+            </span>
+            <span className="text-[11px] font-bold text-slate-400">
+              Showing last {otpLogs.length} attempts
+            </span>
+          </div>
+
+          {otpLogs.length === 0 ? (
+            <div className="py-4 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl">
+              No OTP dispatches logged yet. When students enter mobile numbers, audit entries will appear here.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3">Recipient Mobile</th>
+                    <th className="py-2.5 px-3">Student Name</th>
+                    <th className="py-2.5 px-3">Channel</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {otpLogs.slice(0, 10).map((log, idx) => (
+                    <tr key={log.id || idx} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-2 px-3 font-mono font-bold text-slate-900">
+                        {log.maskedMobile}
+                      </td>
+                      <td className="py-2 px-3 text-slate-700">
+                        {log.studentName}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-800">
+                          {log.channel === 'whatsapp' ? 'WhatsApp' : log.channel === 'sms_gateway' ? 'SMS Gateway' : log.channel === 'admin_bypass' ? 'Educator Bypass' : 'Mobile SMS'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                            log.status === 'verified'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : log.status === 'dispatched'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : log.status === 'expired'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
+                        >
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right text-[11px] text-slate-400 font-mono">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

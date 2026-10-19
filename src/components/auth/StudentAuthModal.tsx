@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { otpService } from '../../services/otpService';
 import { validateIndianMobile } from '../../utils/mobileValidator';
 import { EducationBoard, GradeLevel, UserProfile } from '../../types';
 import {
@@ -15,7 +16,13 @@ import {
   Info,
   Lock,
   KeyRound,
-  X
+  X,
+  Smartphone,
+  MessageCircle,
+  RefreshCw,
+  Timer,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export const StudentAuthModal: React.FC = () => {
@@ -32,7 +39,9 @@ export const StudentAuthModal: React.FC = () => {
     currentRole,
     verifyStaffPinAndSwitch,
     facultyMembers,
-    setActiveFacultyId
+    setActiveFacultyId,
+    adminPin,
+    facultyPin
   } = useApp();
 
   // Role tab state for the unified login gateway: 'student' | 'faculty' | 'admin'
@@ -46,13 +55,34 @@ export const StudentAuthModal: React.FC = () => {
   const [selectedBoard, setSelectedBoard] = useState<EducationBoard>(activeBoard || 'ICSE');
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(activeGrade || '7');
   const [otpInput, setOtpInput] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('1234');
   const [studentError, setStudentError] = useState('');
+
+  // Real Mobile OTP delivery state
+  const [whatsappUrl, setWhatsappUrl] = useState('');
+  const [smsUrl, setSmsUrl] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [expiryCountdown, setExpiryCountdown] = useState(0);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [otpNotice, setOtpNotice] = useState('');
+  const [showOfflineBypass, setShowOfflineBypass] = useState(false);
+  const [offlineBypassPin, setOfflineBypassPin] = useState('');
 
   // Staff form state
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>(facultyMembers[0]?.id || 'fac-1');
   const [staffPin, setStaffPin] = useState('');
   const [staffError, setStaffError] = useState('');
+
+  // OTP Countdown timer
+  useEffect(() => {
+    let timer: any;
+    if (studentStep === 'otp') {
+      timer = setInterval(() => {
+        setResendCooldown(prev => (prev > 0 ? prev - 1 : 0));
+        setExpiryCountdown(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [studentStep]);
 
   // If user opens staff modal explicitly from inside the app, default to admin or faculty tab
   useEffect(() => {
@@ -103,7 +133,7 @@ export const StudentAuthModal: React.FC = () => {
     }
   }, [existingStudentRecord]);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setStudentError('');
 
@@ -117,19 +147,46 @@ export const StudentAuthModal: React.FC = () => {
       return;
     }
 
-    // Generate random 4-digit OTP
-    const mockOtp = String(Math.floor(1000 + Math.random() * 9000));
-    setGeneratedOtp(mockOtp);
-    setStudentStep('otp');
+    setIsDispatching(true);
+    try {
+      const res = await otpService.sendOtp(mobileValidation.cleanMobile, fullName);
+      setWhatsappUrl(res.whatsappUrl);
+      setSmsUrl(res.smsUrl);
+      setResendCooldown(30);
+      setExpiryCountdown(300);
+      setOtpInput('');
+      setOtpNotice(res.message);
+      setStudentStep('otp');
+    } catch {
+      setStudentError('Unable to dispatch OTP. Please check your internet connection.');
+    } finally {
+      setIsDispatching(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpInput.trim() !== generatedOtp && otpInput.trim() !== '1234') {
-      setStudentError('Invalid OTP. Please enter the 4-digit code shown on screen.');
-      return;
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isDispatching) return;
+    setStudentError('');
+    setIsDispatching(true);
+    try {
+      const res = await otpService.sendOtp(mobileValidation.cleanMobile, fullName);
+      if (res.success) {
+        setWhatsappUrl(res.whatsappUrl);
+        setSmsUrl(res.smsUrl);
+        setResendCooldown(30);
+        setExpiryCountdown(300);
+        setOtpNotice('New verification code dispatched to your phone!');
+      } else {
+        setStudentError(res.message);
+      }
+    } catch {
+      setStudentError('Failed to resend OTP. Please try again.');
+    } finally {
+      setIsDispatching(false);
     }
+  };
 
+  const completeStudentLogin = () => {
     const cleanMobile = mobileValidation.cleanMobile;
     const isMobileUsed = storage.isMobileDemoUsed(cleanMobile) || !!existingStudentRecord?.demoMockTestTaken;
     const isDeviceUsed = storage.isDeviceDemoUsed();
@@ -161,6 +218,51 @@ export const StudentAuthModal: React.FC = () => {
     setActiveGrade(selectedGrade);
     loginStudent(studentProfile as UserProfile);
     setIsStaffModalOpen(false);
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStudentError('');
+
+    if (!otpInput.trim()) {
+      setStudentError('Please enter the 6-digit verification code received on your mobile phone.');
+      return;
+    }
+
+    const verification = otpService.verifyOtp(mobileValidation.cleanMobile, otpInput, {
+      validAdminPin: adminPin,
+      validFacultyPin: facultyPin
+    });
+
+    if (!verification.success) {
+      setStudentError(verification.message);
+      return;
+    }
+
+    completeStudentLogin();
+  };
+
+  const handleOfflineBypassVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStudentError('');
+
+    if (!offlineBypassPin.trim()) {
+      setStudentError('Please enter the Director or Faculty authorization PIN.');
+      return;
+    }
+
+    const verification = otpService.verifyOtp(mobileValidation.cleanMobile, '', {
+      adminBypassPin: offlineBypassPin,
+      validAdminPin: adminPin,
+      validFacultyPin: facultyPin
+    });
+
+    if (!verification.success) {
+      setStudentError(verification.message);
+      return;
+    }
+
+    completeStudentLogin();
   };
 
   const handleStaffLogin = (roleToVerify: 'admin' | 'faculty') => {
@@ -468,58 +570,166 @@ export const StudentAuthModal: React.FC = () => {
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
-                    <div className="flex items-center space-x-2 font-bold text-xs">
-                      <ShieldCheck className="w-4 h-4 text-amber-600" />
-                      <span>Simulated OTP Verification</span>
+                  {/* Real Mobile Dispatch Information Banner */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-indigo-50 border border-emerald-300 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                          <Smartphone className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-black uppercase tracking-wider text-emerald-950 flex items-center space-x-1.5">
+                            <span>Mobile OTP Dispatched</span>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          </div>
+                          <div className="text-xs text-slate-700 font-semibold">
+                            Sent to registered phone: <strong className="font-mono text-emerald-900">+91 ••••••{mobileValidation.cleanMobile.slice(-4)}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full">
+                        Secure SMS
+                      </span>
                     </div>
-                    <div className="text-xs text-amber-800">
-                      Verification code sent to <strong>+91 {mobileNumber}</strong>:
+
+                    {otpNotice && (
+                      <div className="text-[11px] text-emerald-800 font-medium bg-emerald-100/60 p-2 rounded-xl">
+                        {otpNotice}
+                      </div>
+                    )}
+
+                    {/* Direct Mobile Retrieval Actions */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center space-x-2 shadow-sm transition-all active:scale-95"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Receive via WhatsApp</span>
+                      </a>
+
+                      <a
+                        href={smsUrl}
+                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs flex items-center justify-center space-x-2 shadow-sm transition-all active:scale-95"
+                      >
+                        <Smartphone className="w-4 h-4" />
+                        <span>Open Native SMS App</span>
+                      </a>
                     </div>
-                    <div className="text-2xl font-black font-mono tracking-widest text-indigo-700 pt-1">
-                      {generatedOtp}
-                    </div>
+
+                    <p className="text-[11px] text-slate-600 leading-tight">
+                      Please check the message received on your mobile device and enter the 6-digit code below.
+                    </p>
                   </div>
 
+                  {/* 6-Digit OTP Input */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                      Enter 4-Digit Verification Code:
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={4}
-                      autoFocus
-                      value={otpInput}
-                      onChange={e => setOtpInput(e.target.value)}
-                      placeholder="Enter 4-digit code"
-                      className="w-full text-center tracking-widest text-2xl font-mono font-black py-3 rounded-2xl border-2 border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 text-slate-900"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Enter 6-Digit Mobile Verification Code <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-indigo-700 flex items-center space-x-1">
+                        <Timer className="w-3.5 h-3.5" />
+                        <span>Expires in {Math.floor(expiryCountdown / 60)}:{(expiryCountdown % 60).toString().padStart(2, '0')}</span>
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoFocus
+                        value={otpInput}
+                        onChange={e => {
+                          setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6));
+                          setStudentError('');
+                        }}
+                        placeholder="• • • • • •"
+                        className="w-full text-center tracking-[0.4em] text-2xl font-mono font-black py-3.5 rounded-2xl border-2 border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 text-slate-900 bg-indigo-50/20 placeholder:tracking-normal placeholder:font-normal placeholder:text-sm placeholder:text-slate-400"
+                      />
+                    </div>
                   </div>
 
+                  {/* Action Controls: Resend & Edit Number */}
                   <div className="flex items-center space-x-3">
                     <button
                       type="button"
-                      onClick={() => setOtpInput(generatedOtp)}
-                      className="w-1/2 py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-colors"
+                      disabled={resendCooldown > 0 || isDispatching}
+                      onClick={handleResendOtp}
+                      className="w-1/2 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold text-xs transition-colors flex items-center justify-center space-x-1.5"
                     >
-                      ⚡ Auto-Fill OTP ({generatedOtp})
+                      <RefreshCw className={`w-3.5 h-3.5 ${isDispatching ? 'animate-spin' : ''}`} />
+                      <span>{resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend Code'}</span>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => setStudentStep('details')}
+                      onClick={() => {
+                        setStudentStep('details');
+                        setStudentError('');
+                      }}
                       className="w-1/2 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
                     >
-                      Edit Mobile Number
+                      Change Phone Number
                     </button>
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
+                    disabled={otpInput.trim().length < 4}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-98 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center space-x-2"
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>Verify & Enter Student Portal</span>
+                    <span>Verify Code & Enter Student Portal</span>
                   </button>
+
+                  {/* Collapsible Classroom / Educator Offline Bypass */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowOfflineBypass(!showOfflineBypass)}
+                      className="w-full flex items-center justify-between text-left text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors py-1"
+                    >
+                      <span className="flex items-center space-x-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Director / Educator Classroom Offline Bypass</span>
+                      </span>
+                      {showOfflineBypass ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    {showOfflineBypass && (
+                      <div className="mt-2 p-3 rounded-2xl bg-amber-50/80 border border-amber-300 space-y-2 text-xs animate-fadeIn">
+                        <p className="text-amber-950 leading-relaxed font-medium">
+                          For classroom projector lectures when mobile connectivity is unavailable: Enter Director Uma Shukla or Faculty authorization PIN.
+                        </p>
+                        <div className="flex space-x-2">
+                          <input
+                            type="password"
+                            maxLength={8}
+                            value={offlineBypassPin}
+                            onChange={e => {
+                              setOfflineBypassPin(e.target.value);
+                              setStudentError('');
+                            }}
+                            placeholder="Enter Authorization PIN"
+                            className="flex-1 px-3 py-2 rounded-xl border border-amber-300 font-mono font-bold text-sm bg-white text-slate-900 focus:outline-none focus:border-amber-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleOfflineBypassVerify}
+                            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shrink-0 transition-colors shadow-sm"
+                          >
+                            Authorize
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </form>
               )}
 

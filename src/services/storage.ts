@@ -15,7 +15,9 @@ import {
   ApprovalStatus,
   EducationBoard,
   AchievementBadge,
-  LeaderboardUser
+  LeaderboardUser,
+  SmsGatewayConfig,
+  OtpDispatchLog
 } from '../types';
 import { DEFAULT_USER, INITIAL_TEST_ATTEMPTS, INITIAL_BOOKMARKS, INITIAL_DOUBTS, INITIAL_REGISTERED_STUDENTS, INITIAL_TRANSACTIONS } from '../data/defaultUser';
 import { ICSE_CHAPTERS } from '../data/icseCurriculum';
@@ -43,7 +45,9 @@ const STORAGE_KEYS = {
   FACULTY_MEMBERS: 'mantra_faculty_members',
   ACTIVE_FACULTY_ID: 'mantra_active_faculty_id',
   DEVICE_DEMO_TRACK: 'mantra_device_demo_track',
-  DEMO_USED_MOBILES: 'mantra_demo_used_mobiles'
+  DEMO_USED_MOBILES: 'mantra_demo_used_mobiles',
+  SMS_CONFIG: 'mantra_sms_gateway_config',
+  OTP_LOGS: 'mantra_otp_dispatch_logs'
 };
 
 export const SEED_FACULTY_MEMBERS: FacultyMember[] = [
@@ -1054,6 +1058,43 @@ export const storage = {
 
   saveLeaderboard(data: LeaderboardUser[]): void {
     localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(data));
+  },
+
+  getSmsGatewayConfig(): SmsGatewayConfig {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SMS_CONFIG);
+      return data
+        ? JSON.parse(data)
+        : {
+            enabled: true,
+            provider: 'whatsapp_direct'
+          };
+    } catch {
+      return {
+        enabled: true,
+        provider: 'whatsapp_direct'
+      };
+    }
+  },
+
+  saveSmsGatewayConfig(cfg: SmsGatewayConfig): void {
+    localStorage.setItem(STORAGE_KEYS.SMS_CONFIG, JSON.stringify(cfg));
+  },
+
+  getOtpLogs(): OtpDispatchLog[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.OTP_LOGS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  addOtpLog(entry: OtpDispatchLog): OtpDispatchLog[] {
+    const logs = this.getOtpLogs();
+    const updated = [entry, ...logs].slice(0, 50);
+    localStorage.setItem(STORAGE_KEYS.OTP_LOGS, JSON.stringify(updated));
+    return updated;
   },
 
   resetAll(): void {
