@@ -140,7 +140,7 @@ export const FlashcardsModal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  Quizlet & Anki Spaced Repetition
+                  Mantra Leitner Spaced Repetition Drill
                 </span>
                 <span className="text-xs text-indigo-200">
                   {deck.length} Flashcards
